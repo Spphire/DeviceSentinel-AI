@@ -63,6 +63,8 @@ state-monitoring
 3. Review
 4. Done
 
+如果你希望把仓库里的协作文档自动同步到 Projects，看 [github-projects-guide.md](github-projects-guide.md)。
+
 ## 4. 建议置顶的文档入口
 
 如果你希望 GitHub 页面“一眼看清”，建议按这个顺序引导：

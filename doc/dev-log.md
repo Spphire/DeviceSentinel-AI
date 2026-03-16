@@ -5,6 +5,12 @@
 
 ## 2026-03-17
 
+### GitHub Projects 协作文档同步
+
+- 新增 `scripts/sync_github_projects.py`，可将 `current-status / active-plan / dev-log` 汇总后同步到 GitHub Projects v2
+- 新增同步解析与 GraphQL 调用逻辑，当前以 Projects draft issue 作为同步目标
+- 新增 `doc/github-projects-guide.md`，明确字段建议、映射规则与同步命令
+
 ### 共享网关与后端管理
 
 - 将真实设备接入从“每台设备单独配置 `host / port / path`”重构为“全局共享网关配置”

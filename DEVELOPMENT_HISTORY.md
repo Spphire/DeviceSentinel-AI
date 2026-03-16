@@ -182,6 +182,15 @@
 - 调整 `README.md` 和 `doc/README.md`，让协作 coder 能快速定位“当前状态 / 当前计划 / 最近开发日志”
 - 更新 GitHub 发布指南，明确 GitHub 更适合展示摘要、计划和协作上下文，而不是承载原始实时日志
 
+### 2026-03-17 第十六阶段
+
+- 新增 `scripts/sync_github_projects.py`，用于把协作文档同步到 GitHub Projects v2
+- 新增 `app/services/github_projects_sync.py`，负责解析 `current-status / active-plan / dev-log` 并调用 GraphQL API 创建或更新 draft issue
+- 新增 `doc/github-projects-guide.md`，说明字段建议、文档映射规则和同步命令
+- 当前同步策略为：
+  - `doc/current-status.md + doc/dev-log.md` -> `Current project context` 上下文卡
+  - `doc/active-plan.md` -> Ready / Backlog / Done 等计划卡
+
 ### 2026-03-16 当前待继续工作（含优先级）
 
 - `P2` 评估是否为真实设备接入增加 `MQTT` 模式，与当前 `HTTP JSON push` 并存；重点比较单机演示复杂度、多设备扩展性、跨主机部署和断线重连体验

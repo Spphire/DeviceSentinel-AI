@@ -35,6 +35,7 @@
 | [`doc/current-status.md`](doc/current-status.md) | 协作 coder 入口：当前阶段、默认运行方式、关键约束 |
 | [`doc/active-plan.md`](doc/active-plan.md) | 协作 coder 入口：当前优先事项和下一步计划 |
 | [`doc/dev-log.md`](doc/dev-log.md) | 近期开发日志与关键决策摘要 |
+| [`doc/github-projects-guide.md`](doc/github-projects-guide.md) | 将协作文档同步到 GitHub Projects 看板的说明 |
 | [`doc/development-history.md`](doc/development-history.md) | GitHub 展示版开发历史 |
 | [`doc/roadmap.md`](doc/roadmap.md) | 下一阶段规划 |
 | [`doc/github-publishing-guide.md`](doc/github-publishing-guide.md) | GitHub 仓库发布与展示建议 |
