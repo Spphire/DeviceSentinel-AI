@@ -1,9 +1,11 @@
 from app.services.github_projects_sync import (
+    build_milestone_drafts,
     build_context_draft,
     build_plan_drafts,
     ensure_sync_marker,
     extract_latest_dev_log,
     extract_sync_key,
+    parse_development_history_milestones,
     parse_active_plan,
 )
 
@@ -76,6 +78,28 @@ DEV_LOG = """# 开发日志
 """
 
 
+DEVELOPMENT_HISTORY = """# 开发历史记录
+
+## 已完成开发历史
+
+### 2026-03-16 第一阶段
+
+- 从空目录搭建了项目基础结构
+- 实现了 SGCC 模拟数据、阈值分析、MPC Skill 风格函数封装
+  - 补充了首版 Skill 风格脚本
+
+### 2026-03-17 第十四阶段
+
+- 将真实设备接入从“设备级通讯配置”重构为“全局共享网关配置”
+- 新增独立后端管理主程序 `scripts/run_backend.py`
+- 新增状态摘要导出器、repository_dispatch 推送脚本和 GitHub Pages 发布工作流
+
+### 2026-03-16 当前待继续工作（含优先级）
+
+- `P2` 评估 MQTT
+"""
+
+
 def test_parse_active_plan_reads_all_sections():
     entries = parse_active_plan(ACTIVE_PLAN)
 
@@ -116,6 +140,24 @@ def test_extract_latest_dev_log_prefers_latest_date_block():
 
     assert date_label == "2026-03-17"
     assert items[0].startswith("共享网关与后端管理")
+
+
+def test_parse_development_history_milestones_reads_only_phase_sections():
+    entries = parse_development_history_milestones(DEVELOPMENT_HISTORY)
+
+    assert [entry.phase_label for entry in entries] == ["第一阶段", "第十四阶段"]
+    assert entries[1].date_label == "2026-03-17"
+    assert entries[1].bullets[0].startswith("将真实设备接入")
+    assert "首版 Skill 风格脚本" in entries[0].bullets[1]
+
+
+def test_build_milestone_drafts_marks_done_and_prefixes_title():
+    drafts = build_milestone_drafts(parse_development_history_milestones(DEVELOPMENT_HISTORY))
+
+    assert drafts[0].title == "Milestone · 第一阶段"
+    assert drafts[0].status_name == "Done"
+    assert "## 阶段成果" in drafts[1].body
+    assert drafts[1].sync_key == "milestone:第十四阶段"
 
 
 def test_sync_marker_round_trip():

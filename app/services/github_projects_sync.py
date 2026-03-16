@@ -32,6 +32,13 @@ class SyncDraft:
 
 
 @dataclass(frozen=True)
+class MilestoneEntry:
+    date_label: str
+    phase_label: str
+    bullets: list[str]
+
+
+@dataclass(frozen=True)
 class ProjectFieldOption:
     field_id: str
     option_id: str
@@ -62,14 +69,22 @@ def load_collaboration_docs(project_root: str | Path) -> dict[str, str]:
         "current_status": (root / "doc" / "current-status.md").read_text(encoding="utf-8"),
         "active_plan": (root / "doc" / "active-plan.md").read_text(encoding="utf-8"),
         "dev_log": (root / "doc" / "dev-log.md").read_text(encoding="utf-8"),
+        "development_history": (root / "DEVELOPMENT_HISTORY.md").read_text(encoding="utf-8"),
     }
 
 
-def build_project_sync_drafts(project_root: str | Path) -> list[SyncDraft]:
+def build_project_sync_drafts(
+    project_root: str | Path,
+    *,
+    include_milestones: bool = False,
+) -> list[SyncDraft]:
     docs = load_collaboration_docs(project_root)
     plan_entries = parse_active_plan(docs["active_plan"])
     drafts = [build_context_draft(docs["current_status"], docs["dev_log"])]
     drafts.extend(build_plan_drafts(plan_entries))
+    if include_milestones:
+        milestone_entries = parse_development_history_milestones(docs["development_history"])
+        drafts.extend(build_milestone_drafts(milestone_entries))
     return drafts
 
 
@@ -152,6 +167,56 @@ def build_plan_drafts(entries: list[PlanEntry]) -> list[SyncDraft]:
                 body=body,
                 status_name=status_name,
                 priority_name=priority_name,
+            )
+        )
+    return drafts
+
+
+def parse_development_history_milestones(markdown: str) -> list[MilestoneEntry]:
+    entries: list[MilestoneEntry] = []
+    pattern = re.compile(r"^###\s+([0-9]{4}-[0-9]{2}-[0-9]{2})\s+(.+?阶段)\s*$", flags=re.MULTILINE)
+    matches = list(pattern.finditer(markdown))
+    for index, match in enumerate(matches):
+        start = match.end()
+        if index + 1 < len(matches):
+            end = matches[index + 1].start()
+        else:
+            next_heading = re.search(r"^###\s+.+$", markdown[start:], flags=re.MULTILINE)
+            end = start + next_heading.start() if next_heading else len(markdown)
+        block = markdown[start:end]
+        bullets = _extract_stage_bullets(block)
+        if bullets:
+            entries.append(
+                MilestoneEntry(
+                    date_label=match.group(1),
+                    phase_label=match.group(2),
+                    bullets=bullets,
+                )
+            )
+    return entries
+
+
+def build_milestone_drafts(entries: list[MilestoneEntry]) -> list[SyncDraft]:
+    drafts: list[SyncDraft] = []
+    for entry in entries:
+        body_lines = [
+            "自动从 `DEVELOPMENT_HISTORY.md` 同步。",
+            "",
+            f"- 时间：{entry.date_label}",
+            f"- 阶段：{entry.phase_label}",
+            "",
+            "## 阶段成果",
+        ]
+        body_lines.extend(f"- {item}" for item in entry.bullets[:8])
+        if len(entry.bullets) > 8:
+            body_lines.append(f"- 其余 {len(entry.bullets) - 8} 条细节请查看 `DEVELOPMENT_HISTORY.md`。")
+
+        drafts.append(
+            SyncDraft(
+                sync_key=f"milestone:{_slugify(entry.phase_label)}",
+                title=f"Milestone · {entry.phase_label}",
+                body="\n".join(body_lines),
+                status_name="Done",
             )
         )
     return drafts
@@ -575,6 +640,30 @@ def _parse_first_markdown_table(section_text: str) -> list[dict[str, str]]:
             continue
         rows.append(dict(zip(headers, cells)))
     return rows
+
+
+def _extract_stage_bullets(block: str) -> list[str]:
+    bullets: list[str] = []
+    for raw_line in block.splitlines():
+        if raw_line.startswith("- "):
+            bullets.append(raw_line[2:].strip())
+            continue
+
+        stripped = raw_line.strip()
+        if not stripped or not bullets:
+            continue
+
+        nested_match = re.match(r"^[-*]\s+(.*)$", stripped)
+        numbered_match = re.match(r"^\d+\.\s+(.*)$", stripped)
+        nested_text = ""
+        if nested_match:
+            nested_text = nested_match.group(1).strip()
+        elif numbered_match:
+            nested_text = numbered_match.group(1).strip()
+
+        if nested_text:
+            bullets[-1] = f"{bullets[-1]}；{nested_text}"
+    return bullets
 
 
 def _map_project_status(section: str, raw_status: str) -> str:

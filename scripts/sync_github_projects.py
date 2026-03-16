@@ -30,10 +30,15 @@ def main() -> None:
     parser.add_argument("--api-url", default="https://api.github.com/graphql")
     parser.add_argument("--status-field-name", default="Status")
     parser.add_argument("--priority-field-name", default="Priority")
+    parser.add_argument(
+        "--include-milestones",
+        action="store_true",
+        help="同时把 DEVELOPMENT_HISTORY.md 中的阶段里程碑同步到 Projects。",
+    )
     parser.add_argument("--dry-run", action="store_true", help="只输出将要同步的草稿，不真正调用 GitHub。")
     args = parser.parse_args()
 
-    drafts = build_project_sync_drafts(PROJECT_ROOT)
+    drafts = build_project_sync_drafts(PROJECT_ROOT, include_milestones=args.include_milestones)
 
     if args.dry_run:
         print(

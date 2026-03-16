@@ -191,6 +191,12 @@
   - `doc/current-status.md + doc/dev-log.md` -> `Current project context` 上下文卡
   - `doc/active-plan.md` -> Ready / Backlog / Done 等计划卡
 
+### 2026-03-17 第十七阶段
+
+- 为 `scripts/sync_github_projects.py` 新增 `--include-milestones` 模式
+- 可将根目录 `DEVELOPMENT_HISTORY.md` 中的阶段历史同步成 `Milestone · 第X阶段` 卡片
+- 里程碑卡默认映射到 Projects 的 `Done` 列，适合给面试官展示项目演进过程
+
 ### 2026-03-16 当前待继续工作（含优先级）
 
 - `P2` 评估是否为真实设备接入增加 `MQTT` 模式，与当前 `HTTP JSON push` 并存；重点比较单机演示复杂度、多设备扩展性、跨主机部署和断线重连体验

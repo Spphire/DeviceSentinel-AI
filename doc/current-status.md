@@ -11,7 +11,7 @@
 - 本机已完成 `Ollama + qwen2.5:7b` 联调
 - 真实设备接入已收敛为“共享 HTTP 网关 + backend manager”
 - GitHub 已补上状态摘要发布工作流，可自动发布静态状态页
-- GitHub Projects 文档同步脚本已落地，可把当前计划和上下文同步到 Projects v2 看板
+- GitHub Projects 文档同步脚本已落地，可把当前计划、上下文和阶段里程碑同步到 Projects v2 看板
 
 ## 2. 当前默认运行方式
 
@@ -42,6 +42,7 @@ python scripts/personal_pc_client.py --instance-id personal_pc_real-b6553a2f --g
 - 聊天面板本地 `Ollama` 问答
 - GitHub 状态摘要静态页本地构建
 - GitHub Projects 文档同步 dry-run
+- GitHub Projects 里程碑同步 dry-run
 
 ## 4. 当前关键入口文件
 

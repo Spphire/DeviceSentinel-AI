@@ -19,6 +19,14 @@ python scripts/sync_github_projects.py --owner <GitHub用户名或组织名> --p
   - 自动写入 `Status`
   - 自动写入 `Priority`
 
+如果需要把阶段里程碑也同步进去，可追加：
+
+```bash
+python scripts/sync_github_projects.py --owner <owner> --project-number <number> --include-milestones
+```
+
+这会把根目录 `DEVELOPMENT_HISTORY.md` 里的“第 X 阶段”同步成 `Milestone · 第X阶段` 卡片。
+
 ## 2. 推荐的看板字段
 
 建议在 GitHub Projects 中先准备这两个单选字段：
@@ -73,6 +81,13 @@ python scripts/sync_github_projects.py --owner <owner> --project-number <number>
 - `最近已完成`
   - 同步到 `Done`
 
+### `DEVELOPMENT_HISTORY.md`
+
+- 仅在传入 `--include-milestones` 时同步
+- 只同步 `### 日期 + 第X阶段` 这类阶段标题
+- 会生成 `Milestone · 第X阶段` 卡片
+- 默认映射到 `Done`
+
 ## 4. 同步前先本地预览
 
 先用 dry-run 看即将创建的卡片内容：
@@ -97,6 +112,12 @@ set GITHUB_PROJECTS_TOKEN=<你的 GitHub Token>
 python scripts/sync_github_projects.py --owner <owner> --project-number <number>
 ```
 
+如果要同时展示开发过程里程碑：
+
+```bash
+python scripts/sync_github_projects.py --owner <owner> --project-number <number> --include-milestones
+```
+
 如果项目属于组织，请加：
 
 ```bash
@@ -109,6 +130,7 @@ python scripts/sync_github_projects.py --owner <org> --owner-type organization -
 - 当前只会创建或更新带同步标记的卡片，不会自动删除其他人工维护的卡片
 - 当前默认最多扫描项目中的前 100 个已有卡片
 - 当前更适合“计划 / 状态 / 协作上下文”同步，不适合直接承载高频设备日志
+- 里程碑模式适合展示阶段演进，不建议把逐条细碎开发日志全部同步进看板
 
 ## 7. 推荐协作流程
 
@@ -124,6 +146,13 @@ python scripts/sync_github_projects.py --owner <org> --owner-type organization -
 python scripts/sync_github_projects.py --owner <owner> --project-number <number>
 ```
 
+如果要更新给面试官看的阶段里程碑，再执行：
+
+```bash
+python scripts/sync_github_projects.py --owner <owner> --project-number <number> --include-milestones
+```
+
 3. 合作 coder 在 GitHub Projects 看板查看：
    - 当前上下文卡
    - Ready / In Progress / Done 列中的任务变化
+   - `Milestone · 第X阶段` 形式的阶段里程碑

@@ -34,6 +34,7 @@
 | 2026-03-17 | backend manager | 独立后端主程序可托管共享 HTTP 网关并按配置重载 |
 | 2026-03-17 | GitHub 状态发布 | 已新增 repository dispatch + Actions + Pages 状态摘要链路 |
 | 2026-03-17 | GitHub Projects 同步 | 已新增将协作文档同步到 GitHub Projects v2 的脚本与说明 |
+| 2026-03-17 | GitHub Projects 里程碑同步 | 已新增 DEVELOPMENT_HISTORY 阶段里程碑同步模式 |
 | 2026-03-16 | local_ollama 接入 | 页面可直接使用本地 `qwen2.5:7b` |
 | 2026-03-16 | Dashboard Tool / Skill 适配 | 聊天与后续 MPC Skill 复用层已具备基础结构 |
 
