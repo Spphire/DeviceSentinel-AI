@@ -10,6 +10,7 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
+from app.agent.chat_agent import build_agent_context, build_agent_hint, generate_agent_reply
 from app.agent.report_generator import generate_report
 from app.services.demo_service import (
     MAX_HISTORY_POINTS,
@@ -67,6 +68,10 @@ def _initialize_state() -> None:
         st.session_state.settings_dialog_open = False
     if "settings_feedback" not in st.session_state:
         st.session_state.settings_feedback = None
+    if "agent_messages" not in st.session_state:
+        st.session_state.agent_messages = []
+    if "agent_context" not in st.session_state:
+        st.session_state.agent_context = {}
 
     if "device_editor_items" not in st.session_state:
         _sync_editor_state_from_settings(st.session_state.applied_settings, reset_device_widgets=True)
@@ -286,6 +291,35 @@ def _render_header() -> None:
             _open_settings_dialog()
 
 
+def _render_agent_chat_panel(agent_context: dict) -> None:
+    header_col1, header_col2 = st.columns([1, 0.18])
+    with header_col1:
+        st.subheader("AI Agent 对话")
+    with header_col2:
+        if st.button("清空对话", key="clear_agent_messages", use_container_width=True):
+            st.session_state.agent_messages = []
+            st.rerun()
+
+    st.caption(build_agent_hint(agent_context))
+
+    if not st.session_state.agent_messages:
+        with st.chat_message("assistant"):
+            st.write(
+                "我已经接入当前面板上下文，可以回答设备状态、异常设备、历史趋势和处置建议。"
+            )
+
+    for message in st.session_state.agent_messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    prompt = st.chat_input("请输入你想询问的问题，例如：这台设备现在怎么样？")
+    if prompt:
+        st.session_state.agent_messages.append({"role": "user", "content": prompt})
+        reply = generate_agent_reply(prompt, agent_context)
+        st.session_state.agent_messages.append({"role": "assistant", "content": reply})
+        st.rerun()
+
+
 @st.dialog("系统设置", width="large", dismissible=True, on_dismiss=_handle_settings_dialog_dismiss)
 def _render_settings_dialog() -> None:
     st.subheader("系统设置")
@@ -305,7 +339,7 @@ def _render_settings_dialog() -> None:
         if st.button("+ 添加设备", use_container_width=True):
             _add_device_row()
 
-        st.caption("设备模板来自项目根目录 [device_templates](C:\\Users\\Apricity\\Desktop\\SGCC_ElecDevice_Monitor_AI_MPC\\device_templates) 中的 JSON 文件。")
+        st.caption("设备模板来自项目根目录 `device_templates/` 中的 JSON 文件。")
 
         for item in st.session_state.device_editor_items:
             _prime_device_editor_widget_state(item)
@@ -572,7 +606,6 @@ def render_dashboard() -> None:
     template = snapshot["template"]
     latest_point = snapshot["point"]
     latest_analysis = snapshot["analysis"]
-    report = _get_cached_report(selected_device_id, latest_analysis, template)
     reference_time = runtime.get_reference_time(selected_device_id)
     relative_heartbeat = _format_relative_time(snapshot["last_heartbeat"], reference_time)
     absolute_heartbeat = "从未上报" if snapshot["last_heartbeat"] is None else snapshot["last_heartbeat"].replace("T", " ")
@@ -604,14 +637,14 @@ def render_dashboard() -> None:
                 else:
                     st.line_chart(history_frame[[metric.label]], height=220, use_container_width=True)
 
-    ai_header_col1, ai_header_col2 = st.columns([1, 0.22])
-    with ai_header_col1:
-        st.caption("AI 智能总结")
-    with ai_header_col2:
-        if st.button("刷新总结", key=f"refresh_report_{selected_device_id}", use_container_width=True):
-            report = _refresh_cached_report(selected_device_id, latest_analysis, template)
-
-    st.markdown(f"<div class='summary-card'>{html.escape(report)}</div>", unsafe_allow_html=True)
+    agent_context = build_agent_context(
+        runtime=runtime,
+        settings=settings,
+        selected_device_id=selected_device_id,
+        history_window=history_window,
+    )
+    st.session_state.agent_context = agent_context
+    _render_agent_chat_panel(agent_context)
 
     if developer_mode and show_structured_analysis:
         with st.expander("结构化分析结果（开发者模式）", expanded=False):

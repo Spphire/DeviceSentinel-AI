@@ -8,7 +8,7 @@
 
 ## 当前能力
 
-- 支持模板驱动的设备类型加载，模板目录位于 [device_templates](C:\Users\Apricity\Desktop\SGCC_ElecDevice_Monitor_AI_MPC\device_templates)
+- 支持模板驱动的设备类型加载，模板目录位于 [device_templates](device_templates)
 - 支持的模板：
   - `sgcc_simulated`：SGCC 模拟设备
   - `personal_pc_real`：个人 PC 真实设备
@@ -21,12 +21,12 @@
   - 本地 AI 总结
   - 设置弹窗
 - 设置支持本地保存，文件路径：
-  - [storage/dashboard_settings.json](C:\Users\Apricity\Desktop\SGCC_ElecDevice_Monitor_AI_MPC\storage\dashboard_settings.json)
+  - [storage/dashboard_settings.json](storage/dashboard_settings.json)
 - 真实设备数据接入网关：
   - HTTP 接收地址默认 `http://127.0.0.1:10570/telemetry`
 - 已有真实设备客户端脚本：
-  - [personal_pc_client.py](C:\Users\Apricity\Desktop\SGCC_ElecDevice_Monitor_AI_MPC\scripts\personal_pc_client.py)
-  - [temp_humidity_client.py](C:\Users\Apricity\Desktop\SGCC_ElecDevice_Monitor_AI_MPC\scripts\temp_humidity_client.py)
+  - [personal_pc_client.py](scripts/personal_pc_client.py)
+  - [temp_humidity_client.py](scripts/temp_humidity_client.py)
 
 ## 当前架构
 
@@ -97,10 +97,27 @@
 - 重写根目录 `README.md`，优化为更适合 GitHub 首页展示的入口页
 - 新增 `.github/` Issue / PR 模板，便于后续利用 GitHub 网页端协作
 
+### 2026-03-16 第九阶段
+
+- 本地工作目录切换到 `DeviceSentinel-AI`，与 GitHub 仓库名保持一致
+- 修正文档和页面提示中的旧项目目录引用
+- 将新目录仓库远程 `origin` 指向 GitHub 仓库 `git@github.com:Spphire/DeviceSentinel-AI.git`
+
+### 2026-03-16 第十阶段
+
+- 将原“AI 智能总结”区域升级为聊天式 AI Agent 面板
+- 新增本地 Agent 工具层，支持：
+  - 全局设备总览问答
+  - 异常 / 高风险 / 离线设备查询
+  - 指定设备状态查询
+  - 指标趋势说明
+  - 告警原因与处置建议说明
+- 新增聊天 Agent 单元测试，确保问答能力可回归验证
+
 ### 2026-03-16 当前待继续工作
 
 - 设置弹窗继续细化体验
-- 将 AI 智能总结升级为聊天框
+- 将本地聊天式 Agent 升级为真实大模型驱动
 - 接入真实大模型和 MPC Skill
 - 让模型从用户提问中提取设备关键词、查询当前设备上下文并回答
 

@@ -18,7 +18,7 @@
 | 个人 PC 真实设备 | 已完成 |
 | 温湿度真实设备 | 已完成 |
 | 本地 AI 总结 | 已完成 |
-| 聊天式 AI 助手 | 规划中 |
+| 聊天式 AI 助手 | 本地版已完成 |
 | 真实大模型接入 | 规划中 |
 | MPC Skill 平台联调 | 规划中 |
 
@@ -97,7 +97,7 @@ python -m pytest
 ## 目录结构
 
 ```text
-SGCC_ElecDevice_Monitor_AI_MPC/
+DeviceSentinel-AI/
 ├─ app/
 ├─ device_templates/
 ├─ doc/
