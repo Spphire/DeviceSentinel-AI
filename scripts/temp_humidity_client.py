@@ -1,4 +1,4 @@
-"""Push temperature/humidity telemetry to the gateway."""
+"""Push temperature/humidity telemetry to the dashboard gateway."""
 
 from __future__ import annotations
 
@@ -17,20 +17,44 @@ def send_payload(url: str, payload: dict) -> None:
         print(response.read().decode("utf-8"))
 
 
-def main() -> None:
+def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Temperature/humidity telemetry client.")
     parser.add_argument("--instance-id", required=True)
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=10570)
-    parser.add_argument("--path", default="/telemetry")
+    parser.add_argument(
+        "--gateway-host",
+        "--host",
+        dest="gateway_host",
+        default="127.0.0.1",
+        help="Dashboard telemetry gateway host or IP.",
+    )
+    parser.add_argument(
+        "--gateway-port",
+        "--port",
+        dest="gateway_port",
+        type=int,
+        default=10570,
+        help="Dashboard telemetry gateway port.",
+    )
+    parser.add_argument(
+        "--gateway-path",
+        "--path",
+        dest="gateway_path",
+        default="/telemetry",
+        help="Dashboard telemetry gateway path.",
+    )
     parser.add_argument("--temperature", type=float)
     parser.add_argument("--humidity", type=float)
     parser.add_argument("--simulate", action="store_true")
     parser.add_argument("--interval", type=int, default=5)
     parser.add_argument("--once", action="store_true")
+    return parser
+
+
+def main() -> None:
+    parser = build_arg_parser()
     args = parser.parse_args()
 
-    url = f"http://{args.host}:{args.port}{args.path}"
+    url = f"http://{args.gateway_host}:{args.gateway_port}{args.gateway_path}"
 
     while True:
         temperature = args.temperature if args.temperature is not None else round(random.uniform(21.0, 27.0), 1)

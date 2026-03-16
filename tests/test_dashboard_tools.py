@@ -1,10 +1,4 @@
-from app.agent.chat_agent import (
-    AgentBackendConfig,
-    DEFAULT_OLLAMA_MODEL,
-    build_agent_backend_config,
-    build_agent_hint,
-    generate_agent_reply,
-)
+from app.agent.dashboard_tools import invoke_dashboard_tool
 
 
 def _build_context() -> dict:
@@ -48,15 +42,17 @@ def _build_context() -> dict:
             "pc-001": {
                 "instance_id": "pc-001",
                 "device_name": "办公室电脑",
+                "template_id": "personal_pc_real",
+                "template_display_name": "个人 PC 真实设备",
                 "category_name": "个人电脑",
+                "source_type": "real",
                 "metrics": [
                     {"metric_id": "cpu_usage", "label": "CPU 使用率", "unit": "%"},
                     {"metric_id": "gpu_usage", "label": "GPU 使用率", "unit": "%"},
-                    {"metric_id": "gpu_memory_usage", "label": "GPU 显存占用率", "unit": "%"},
                 ],
                 "latest_point": {
                     "device_status": "online",
-                    "metrics": {"cpu_usage": 66.0, "gpu_usage": 32.0, "gpu_memory_usage": 58.0},
+                    "metrics": {"cpu_usage": 66.0, "gpu_usage": 32.0},
                 },
                 "latest_analysis": {
                     "device_status": "online",
@@ -71,17 +67,21 @@ def _build_context() -> dict:
                     ],
                 },
                 "history": [
-                    {"metrics": {"cpu_usage": 40.0, "gpu_usage": 10.0, "gpu_memory_usage": 28.0}},
-                    {"metrics": {"cpu_usage": 52.0, "gpu_usage": 12.0, "gpu_memory_usage": 34.0}},
-                    {"metrics": {"cpu_usage": 58.0, "gpu_usage": 18.0, "gpu_memory_usage": 41.0}},
-                    {"metrics": {"cpu_usage": 66.0, "gpu_usage": 32.0, "gpu_memory_usage": 58.0}},
+                    {"metrics": {"cpu_usage": 40.0, "gpu_usage": 10.0}},
+                    {"metrics": {"cpu_usage": 52.0, "gpu_usage": 12.0}},
+                    {"metrics": {"cpu_usage": 58.0, "gpu_usage": 18.0}},
+                    {"metrics": {"cpu_usage": 66.0, "gpu_usage": 32.0}},
                 ],
+                "last_heartbeat": "2026-03-16T22:10:00",
                 "report": "示例报告",
             },
             "sgcc-001": {
                 "instance_id": "sgcc-001",
                 "device_name": "配电箱 1",
+                "template_id": "sgcc_simulated",
+                "template_display_name": "SGCC 模拟设备",
                 "category_name": "配电设备",
+                "source_type": "simulated",
                 "metrics": [{"metric_id": "temperature", "label": "温度", "unit": "℃"}],
                 "latest_point": {"device_status": "offline", "metrics": {"temperature": None}},
                 "latest_analysis": {
@@ -92,72 +92,45 @@ def _build_context() -> dict:
                     "issues": [{"message": "设备离线。", "suggestion": "检查通信链路。"}],
                 },
                 "history": [],
+                "last_heartbeat": "2026-03-16T21:40:00",
                 "report": "离线报告",
             },
         },
     }
 
 
-def test_build_agent_hint_mentions_selected_device():
-    hint = build_agent_hint(_build_context())
-
-    assert "办公室电脑" in hint
-    assert "默认上下文设备" in hint
-
-
-def test_generate_agent_reply_for_fleet_overview_mentions_abnormal_devices():
-    reply = generate_agent_reply("当前有哪些异常设备？", _build_context())
-
-    assert "当前共监测 2 台设备" in reply
-    assert "办公室电脑" in reply
-
-
-def test_generate_agent_reply_for_selected_device_metric_trend_mentions_metric():
-    reply = generate_agent_reply("这台设备的GPU趋势怎么样？", _build_context())
-
-    assert "办公室电脑" in reply
-    assert "GPU 使用率" in reply
-    assert "趋势判断" in reply
-
-
-def test_generate_agent_reply_for_vram_trend_mentions_gpu_memory_usage():
-    reply = generate_agent_reply("这台设备的显存趋势怎么样？", _build_context())
-
-    assert "办公室电脑" in reply
-    assert "GPU 显存占用率" in reply
-    assert "趋势判断" in reply
-
-
-def test_generate_agent_reply_for_device_action_mentions_suggestions():
-    reply = generate_agent_reply("办公室电脑为什么告警，建议怎么处理？", _build_context())
-
-    assert "办公室电脑" in reply
-    assert "建议" in reply
-
-
-def test_generate_agent_reply_real_llm_falls_back_to_local_rule_when_unavailable(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-
-    reply = generate_agent_reply(
-        "这台设备的GPU趋势怎么样？",
-        _build_context(),
-        backend_config=AgentBackendConfig(mode="real_llm", model="gpt-5.4", use_local_fallback=True),
-        conversation_history=[{"role": "user", "content": "这台设备的GPU趋势怎么样？"}],
+def test_dashboard_overview_tool_returns_abnormal_devices():
+    result = invoke_dashboard_tool(
+        name="get_dashboard_overview",
+        arguments={"focus": "abnormal"},
+        context=_build_context(),
     )
 
-    assert "真实模型当前不可用" in reply
-    assert "GPU 使用率" in reply
+    assert result["ok"] is True
+    assert result["counts"]["abnormal_devices"] == 1
+    assert result["devices"][0]["device_name"] == "办公室电脑"
 
 
-def test_build_agent_backend_config_uses_ollama_default_model_when_mode_is_local_ollama():
-    config = build_agent_backend_config(
-        {
-            "system": {
-                "agent_mode": "local_ollama",
-                "agent_model": "gpt-5.4",
-            }
-        }
+def test_dashboard_metric_trend_tool_resolves_device_and_metric():
+    result = invoke_dashboard_tool(
+        name="get_device_metric_trend",
+        arguments={"device_query": "办公室电脑", "metric_query": "GPU"},
+        context=_build_context(),
     )
 
-    assert config.mode == "local_ollama"
-    assert config.model == DEFAULT_OLLAMA_MODEL
+    assert result["ok"] is True
+    assert result["device"]["device_name"] == "办公室电脑"
+    assert result["metric_label"] == "GPU 使用率"
+    assert result["trend_label"] == "呈上升趋势"
+
+
+def test_dashboard_issue_tool_defaults_to_selected_device():
+    result = invoke_dashboard_tool(
+        name="get_device_issue_analysis",
+        arguments={},
+        context=_build_context(),
+    )
+
+    assert result["ok"] is True
+    assert result["device"]["instance_id"] == "pc-001"
+    assert result["issues"][0]["suggestion"] == "建议检查图形或 AI 任务负载。"

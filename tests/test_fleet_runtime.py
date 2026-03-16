@@ -12,7 +12,6 @@ def test_fleet_runtime_supports_mixed_simulated_templates():
                 "name": "SGCC 设备 1",
                 "template_id": "sgcc_simulated",
                 "simulation_profile": "stable",
-                "communication": {},
             }
         ),
         build_device_config(
@@ -21,7 +20,6 @@ def test_fleet_runtime_supports_mixed_simulated_templates():
                 "name": "温湿度设备 1",
                 "template_id": "temp_humidity_simulated",
                 "simulation_profile": "intermittent_fault",
-                "communication": {},
             }
         ),
     ]
@@ -47,7 +45,6 @@ def test_real_template_without_events_starts_offline():
                 "name": "我的电脑测试机",
                 "template_id": "personal_pc_real",
                 "simulation_profile": None,
-                "communication": {"protocol": "http_json", "host": "127.0.0.1", "port": 10570, "path": "/telemetry"},
             }
         )
     ]

@@ -4,7 +4,7 @@
 
 项目名称：基于 MPC Skill 的电气设备状态监测 AI Agent 系统  
 当前定位：学生级课程设计 / 毕业设计演示系统  
-当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析与本地 AI 总结
+当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层，以及本地 7B 模型部署与联调
 
 ## 当前能力
 
@@ -18,12 +18,20 @@
   - 设备总览
   - 单设备详情
   - 动态指标曲线
-  - 本地 AI 总结
+  - 聊天式 AI Agent
   - 设置弹窗
+- 聊天区支持后端模式切换：
+  - `local_rule`：本地规则式问答
+  - `real_llm`：真实模型 + Tool 调用
+  - `local_ollama`：本地 Ollama 模型回答
+- 真实模型模式支持失败自动回退到本地规则
+- 已整理模板感知的设备查询 Tool / Skill 接口，可供本地规则、真实模型和后续 MPC Skill 复用
+- 已在本机成功部署 `Ollama + qwen2.5:7b`，可直接用于页面聊天区
 - 设置支持本地保存，文件路径：
   - [storage/dashboard_settings.json](storage/dashboard_settings.json)
-- 真实设备数据接入网关：
-  - HTTP 接收地址默认 `http://127.0.0.1:10570/telemetry`
+- 真实设备数据接入采用共享 HTTP 网关：
+  - 默认接收地址 `http://127.0.0.1:10570/telemetry`
+  - 多个真实设备共用同一个 `/telemetry` 入口，通过 `instance_id` 区分
 - 已有真实设备客户端脚本：
   - [personal_pc_client.py](scripts/personal_pc_client.py)
   - [temp_humidity_client.py](scripts/temp_humidity_client.py)
@@ -37,6 +45,11 @@
   - SGCC 规则：`app/analysis/analyzer.py`
   - 模板感知分析：`app/analysis/template_analyzer.py`
 - 报告生成：`app/agent/report_generator.py`
+- 聊天后端适配：`app/agent/chat_agent.py`
+- 设备查询 Tool：`app/agent/dashboard_tools.py`
+- MPC Skill 适配：`app/mpc/dashboard_skill_adapter.py`
+- 共享网关服务：`app/services/gateway_service.py`
+- 后端管理主程序：`scripts/run_backend.py`
 - 页面入口：`streamlit_app.py`
 
 ## 已完成开发历史
@@ -114,12 +127,61 @@
   - 告警原因与处置建议说明
 - 新增聊天 Agent 单元测试，确保问答能力可回归验证
 
-### 2026-03-16 当前待继续工作
+### 2026-03-16 第十一阶段
 
-- 设置弹窗继续细化体验
-- 将本地聊天式 Agent 升级为真实大模型驱动
-- 接入真实大模型和 MPC Skill
-- 让模型从用户提问中提取设备关键词、查询当前设备上下文并回答
+- 讨论并确认后续主线切换为“真实模型接入 + MPC Skill 工具化”
+- 确认当前聊天式 Agent 只是第一版本地规则后端，后续将升级为：
+  - `local_rule`：当前本地工具式回答
+  - `real_llm`：真实大模型回答
+  - `mpc_skill`：模型通过 Skill 查询设备状态
+- 确认后续推荐开发顺序：
+  1. 先做模型适配层
+  2. 再做 MPC Skill 工具接口
+  3. 最后接真实模型与页面聊天区联动
+- 说明当前实际工作目录已切换到 `C:\Users\Apricity\Desktop\DeviceSentinel-AI`
+- 说明旧目录 `C:\Users\Apricity\Desktop\SGCC_ElecDevice_Monitor_AI_MPC` 只是遗留副本，后续应以新目录为准
+
+### 2026-03-16 第十二阶段
+
+- 将聊天后端升级为统一适配层，支持 `local_rule / real_llm` 两种模式
+- 新增模板感知设备查询 Tool 层，支持：
+  - 总览统计查询
+  - 单设备详情查询
+  - 指标趋势查询
+  - 异常原因与处置建议查询
+- 新增 MPC 风格的 Dashboard Skill 适配器，便于后续继续挂接外部 Skill 调用链
+- 设置面板新增 Agent 配置项，可直接切换对话后端、模型名和失败回退策略
+- 真实模型模式改为从环境变量读取 `OPENAI_API_KEY`，避免将密钥写入本地设置文件
+- 为新聊天后端、Tool 层和设置持久化补充测试，当前 `python -m pytest` 已通过
+
+### 2026-03-16 第十三阶段
+
+- 在 Windows 本机安装 `Ollama`
+- 拉取并验证本地模型 `qwen2.5:7b`
+- 将聊天后端新增为 `local_ollama` 模式，支持页面内直接切换到本地 7B
+- 当前本地配置已默认切换为 `local_ollama + qwen2.5:7b`
+- 本地 Ollama 默认服务地址为 `http://127.0.0.1:11434`
+
+### 2026-03-17 第十四阶段
+
+- 将真实设备接入从“设备级通讯配置”重构为“全局共享网关配置”
+- 设置文件新增顶层 `gateway` 配置，并兼容迁移旧版设备级 `communication` 字段
+- 设置面板移除每台真实设备单独填写 `host / port / path` 的方式
+- 新增独立后端管理主程序 `scripts/run_backend.py`
+- 后端 manager 负责托管共享 HTTP 遥测网关，并在全局网关配置变化后自动重载
+- 页面里的真实设备客户端示例命令，改为基于当前共享网关配置和设备 `instance_id` 自动生成
+- 修复设置保存后总是重建运行时的问题，避免仅修改 Agent / 网关配置时清空模拟历史
+
+### 2026-03-16 当前待继续工作（含优先级）
+
+- `P2` 评估是否为真实设备接入增加 `MQTT` 模式，与当前 `HTTP JSON push` 并存；重点比较单机演示复杂度、多设备扩展性、跨主机部署和断线重连体验
+- `P2` 进一步细化 backend manager，例如补充 PID 文件、健康检查和启动脚本，减少手动运维操作
+- `P2` 让聊天主流程进一步统一走 `dashboard_skill_adapter`，收敛 Tool / Skill 两套入口，便于后续真正挂接外部 MPC Skill
+- `P2` 真正联通可用的真实模型账号与 API Key，验证页面里的 `real_llm` 模式
+- `P2` 继续优化本地 Ollama / 真实模型提示词，减少无效调用
+- `P2` 让真实模型进一步利用对话历史，提升多轮追问体验
+- `P2` 继续扩展 Dashboard Tool / MPC Skill，补充更多筛选和聚合查询能力
+- `P3` 如有需要，再细化设置弹窗的交互体验和提示文案
 
 ## 当前运行方式
 
@@ -129,22 +191,28 @@
 streamlit run streamlit_app.py --server.port 7787
 ```
 
-启动真实设备网关：
+如需启用真实模型模式，请先设置环境变量：
 
 ```bash
-python scripts/run_device_gateway.py --host 127.0.0.1 --port 10570 --path /telemetry
+set OPENAI_API_KEY=<你的 API Key>
+```
+
+启动共享后端管理主程序：
+
+```bash
+python scripts/run_backend.py
 ```
 
 发送个人 PC 指标：
 
 ```bash
-python scripts/personal_pc_client.py --instance-id <设备实例ID> --host 127.0.0.1 --port 10570 --path /telemetry
+python scripts/personal_pc_client.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry
 ```
 
 发送温湿度指标：
 
 ```bash
-python scripts/temp_humidity_client.py --instance-id <设备实例ID> --host 127.0.0.1 --port 10570 --path /telemetry --simulate
+python scripts/temp_humidity_client.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry --simulate
 ```
 
 运行测试：
@@ -158,8 +226,19 @@ python -m pytest
 可将下面这段作为简版上下文发给新的 Codex 会话：
 
 ```text
-项目是“基于 MPC Skill 的电气设备状态监测 AI Agent 系统”，当前已经做成模板驱动版本。
+项目现在的实际工作目录是 C:\Users\Apricity\Desktop\DeviceSentinel-AI，不再以旧目录 SGCC_ElecDevice_Monitor_AI_MPC 为准。
+项目是“基于 MPC Skill 的电气设备状态监测 AI Agent 系统”，当前已经做成模板驱动版本，并且聊天区已经支持 local_rule / real_llm 双后端。
 根目录 DEVELOPMENT_HISTORY.md 记录了当前架构、开发历史和下一步计划。
 页面入口是 streamlit_app.py，模板目录是 device_templates，设置持久化在 storage/dashboard_settings.json。
-当前重点是继续细化设置弹窗体验，并准备把 AI 智能总结升级成聊天框，后续接真实大模型和 MPC Skill。
+当前重点是继续把真实模型模式调稳，并扩展已整理好的设备查询 Tool / MPC Skill 接口。
+本机现已部署 Ollama 和 qwen2.5:7b，页面聊天区可切到 local_ollama 模式直接使用。
 ```
+
+## 重开 Codex 时的提醒
+
+- 请直接打开新目录：`C:\Users\Apricity\Desktop\DeviceSentinel-AI`
+- 不要再以旧目录 `C:\Users\Apricity\Desktop\SGCC_ElecDevice_Monitor_AI_MPC` 作为工作区
+- 当前 GitHub 仓库为：`git@github.com:Spphire/DeviceSentinel-AI.git`
+- 当前最新已推送提交：
+  - `fcdafb4` `Add local dashboard agent chat experience`
+  - `a053da9` `Refine dashboard settings and add project docs`

@@ -4,3 +4,4 @@ __pycache__/
 
 storage/dashboard_settings.json
 storage/real_device_events.jsonl
+storage/gateway_manager_status.json

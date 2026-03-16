@@ -8,6 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.models import DashboardDeviceConfig
+from app.services.gateway_service import DEFAULT_GATEWAY_PATH, normalize_gateway_config
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -21,6 +22,15 @@ DEFAULT_SETTINGS = {
         "refresh_interval_seconds": 2,
         "developer_mode": False,
         "show_structured_analysis": False,
+        "agent_mode": "local_rule",
+        "agent_model": "gpt-5.4",
+        "agent_use_local_fallback": True,
+    },
+    "gateway": {
+        "listen_host": "127.0.0.1",
+        "port": 10570,
+        "path": DEFAULT_GATEWAY_PATH,
+        "advertised_host": "",
     },
     "devices": [
         {
@@ -28,30 +38,47 @@ DEFAULT_SETTINGS = {
             "name": "SGCC 配电箱 1",
             "template_id": "sgcc_simulated",
             "simulation_profile": "stable",
-            "communication": {},
         },
         {
             "instance_id": "sgcc-demo-002",
             "name": "SGCC 配电箱 2",
             "template_id": "sgcc_simulated",
             "simulation_profile": "intermittent_fault",
-            "communication": {},
         },
         {
             "instance_id": "temp-demo-001",
             "name": "温湿度传感器 1",
             "template_id": "temp_humidity_simulated",
             "simulation_profile": "stable",
-            "communication": {},
         },
     ],
 }
+
+
+def _extract_legacy_gateway_settings(devices: list[dict[str, Any]]) -> dict[str, Any]:
+    for device in devices:
+        communication = device.get("communication") or {}
+        if not communication:
+            continue
+        return {
+            "listen_host": communication.get("host", DEFAULT_SETTINGS["gateway"]["listen_host"]),
+            "port": communication.get("port", DEFAULT_SETTINGS["gateway"]["port"]),
+            "path": communication.get("path", DEFAULT_SETTINGS["gateway"]["path"]),
+        }
+    return {}
 
 
 def _normalize_settings(payload: dict[str, Any] | None) -> dict[str, Any]:
     payload = payload or {}
     system = {**DEFAULT_SETTINGS["system"], **payload.get("system", {})}
     devices = payload.get("devices") or DEFAULT_SETTINGS["devices"]
+    gateway = normalize_gateway_config(
+        {
+            **DEFAULT_SETTINGS["gateway"],
+            **_extract_legacy_gateway_settings(devices),
+            **(payload.get("gateway") or {}),
+        }
+    ).to_dict()
     normalized_devices: list[dict[str, Any]] = []
 
     for index, device in enumerate(devices):
@@ -61,11 +88,10 @@ def _normalize_settings(payload: dict[str, Any] | None) -> dict[str, Any]:
                 "name": device.get("name") or f"设备 {index + 1}",
                 "template_id": device.get("template_id") or "sgcc_simulated",
                 "simulation_profile": device.get("simulation_profile"),
-                "communication": device.get("communication") or {},
             }
         )
 
-    return {"system": system, "devices": normalized_devices}
+    return {"system": system, "gateway": gateway, "devices": normalized_devices}
 
 
 def load_dashboard_settings(settings_path: Path | None = None) -> dict[str, Any]:
@@ -90,7 +116,6 @@ def build_device_config(payload: dict[str, Any]) -> DashboardDeviceConfig:
         name=payload["name"],
         template_id=payload["template_id"],
         simulation_profile=payload.get("simulation_profile"),
-        communication=payload.get("communication") or {},
     )
 
 
@@ -105,5 +130,4 @@ def create_new_device_payload(template_id: str) -> dict[str, Any]:
         "name": "新设备",
         "template_id": template_id,
         "simulation_profile": None,
-        "communication": {},
     }

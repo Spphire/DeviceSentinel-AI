@@ -1,4 +1,4 @@
-"""Collect local PC metrics and push them to the telemetry gateway."""
+"""Collect local PC metrics and push them to the dashboard telemetry gateway."""
 
 from __future__ import annotations
 
@@ -9,6 +9,12 @@ import time
 from datetime import datetime
 from urllib import request
 
+
+NVIDIA_SMI_QUERY = [
+    "nvidia-smi",
+    "--query-gpu=utilization.gpu,memory.used,memory.total",
+    "--format=csv,noheader,nounits",
+]
 
 POWERSHELL_METRIC_SCRIPT = r"""
 $cpu = Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -ErrorAction SilentlyContinue |
@@ -62,37 +68,130 @@ def send_payload(url: str, payload: dict) -> None:
         print(response.read().decode("utf-8"))
 
 
-def _run_powershell(command: str) -> str:
+def _run_command(command: list[str], timeout: int = 10) -> str:
     completed = subprocess.run(
-        ["powershell", "-NoProfile", "-Command", command],
+        command,
         capture_output=True,
         text=True,
         check=True,
+        timeout=timeout,
     )
     return completed.stdout.strip()
 
 
+def _run_powershell(command: str) -> str:
+    return _run_command(["powershell", "-NoProfile", "-Command", command])
+
+
+def _parse_nvidia_smi_gpu_metrics(output: str) -> dict[str, float] | None:
+    gpu_usage_values: list[float] = []
+    gpu_memory_usage_values: list[float] = []
+
+    for line in output.splitlines():
+        columns = [column.strip() for column in line.split(",")]
+        if len(columns) < 3:
+            continue
+
+        try:
+            gpu_usage = float(columns[0])
+            memory_used = float(columns[1])
+            memory_total = float(columns[2])
+        except ValueError:
+            continue
+
+        gpu_usage_values.append(gpu_usage)
+        if memory_total > 0:
+            gpu_memory_usage_values.append((memory_used / memory_total) * 100)
+
+    if not gpu_usage_values:
+        return None
+    return {
+        "gpu_usage": max(gpu_usage_values),
+        "gpu_memory_usage": max(gpu_memory_usage_values) if gpu_memory_usage_values else 0.0,
+    }
+
+
+def _collect_nvidia_gpu_metrics(sample_count: int = 3, sample_interval_seconds: float = 0.25) -> dict[str, float] | None:
+    samples: list[dict[str, float]] = []
+    for index in range(sample_count):
+        try:
+            output = _run_command(NVIDIA_SMI_QUERY, timeout=5)
+        except (FileNotFoundError, subprocess.SubprocessError):
+            return None
+
+        metrics = _parse_nvidia_smi_gpu_metrics(output)
+        if metrics is not None:
+            samples.append(metrics)
+
+        if index < sample_count - 1:
+            time.sleep(sample_interval_seconds)
+
+    if not samples:
+        return None
+
+    return {
+        "gpu_usage": round(min(max(max(sample["gpu_usage"] for sample in samples), 0.0), 100.0), 1),
+        "gpu_memory_usage": round(
+            min(max(max(sample["gpu_memory_usage"] for sample in samples), 0.0), 100.0),
+            1,
+        ),
+    }
+
+
 def collect_metrics() -> dict:
+    nvidia_gpu_metrics = _collect_nvidia_gpu_metrics()
     payload = json.loads(_run_powershell(POWERSHELL_METRIC_SCRIPT))
+    if nvidia_gpu_metrics is None:
+        gpu_usage = round(float(payload.get("gpu_usage", 0.0)), 1)
+        gpu_memory_usage = 0.0
+    else:
+        gpu_usage = nvidia_gpu_metrics["gpu_usage"]
+        gpu_memory_usage = nvidia_gpu_metrics["gpu_memory_usage"]
+
     return {
         "cpu_usage": round(float(payload.get("cpu_usage", 0.0)), 1),
         "memory_usage": round(float(payload.get("memory_usage", 0.0)), 1),
         "disk_activity": round(float(payload.get("disk_activity", 0.0)), 1),
-        "gpu_usage": round(float(payload.get("gpu_usage", 0.0)), 1),
+        "gpu_usage": gpu_usage,
+        "gpu_memory_usage": gpu_memory_usage,
     }
 
 
-def main() -> None:
+def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Personal PC telemetry client.")
     parser.add_argument("--instance-id", required=True)
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=10570)
-    parser.add_argument("--path", default="/telemetry")
+    parser.add_argument(
+        "--gateway-host",
+        "--host",
+        dest="gateway_host",
+        default="127.0.0.1",
+        help="Dashboard telemetry gateway host or IP.",
+    )
+    parser.add_argument(
+        "--gateway-port",
+        "--port",
+        dest="gateway_port",
+        type=int,
+        default=10570,
+        help="Dashboard telemetry gateway port.",
+    )
+    parser.add_argument(
+        "--gateway-path",
+        "--path",
+        dest="gateway_path",
+        default="/telemetry",
+        help="Dashboard telemetry gateway path.",
+    )
     parser.add_argument("--interval", type=int, default=5)
     parser.add_argument("--once", action="store_true")
+    return parser
+
+
+def main() -> None:
+    parser = build_arg_parser()
     args = parser.parse_args()
 
-    url = f"http://{args.host}:{args.port}{args.path}"
+    url = f"http://{args.gateway_host}:{args.gateway_port}{args.gateway_path}"
     while True:
         payload = {
             "instance_id": args.instance_id,

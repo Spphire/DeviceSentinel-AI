@@ -10,7 +10,15 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-from app.agent.chat_agent import build_agent_context, build_agent_hint, generate_agent_reply
+from app.agent.chat_agent import (
+    AgentBackendConfig,
+    DEFAULT_OLLAMA_MODEL,
+    DEFAULT_REAL_LLM_MODEL,
+    build_agent_backend_config,
+    build_agent_context,
+    build_agent_hint,
+    generate_agent_reply,
+)
 from app.agent.report_generator import generate_report
 from app.services.demo_service import (
     MAX_HISTORY_POINTS,
@@ -20,6 +28,12 @@ from app.services.demo_service import (
     load_persisted_dashboard_settings,
     load_runtime_templates,
     save_persisted_dashboard_settings,
+)
+from app.services.gateway_service import (
+    DEFAULT_GATEWAY_PATH,
+    build_gateway_client_target,
+    load_gateway_manager_status,
+    normalize_gateway_config,
 )
 
 
@@ -38,10 +52,6 @@ DEVICE_EDITOR_WIDGET_PREFIXES = (
     "editor_id_",
     "editor_template_",
     "editor_profile_",
-    "editor_protocol_",
-    "editor_host_",
-    "editor_port_",
-    "editor_path_",
 )
 
 
@@ -72,13 +82,20 @@ def _initialize_state() -> None:
         st.session_state.agent_messages = []
     if "agent_context" not in st.session_state:
         st.session_state.agent_context = {}
+    if "session_openai_api_key" not in st.session_state:
+        st.session_state.session_openai_api_key = ""
+    if "session_openai_base_url" not in st.session_state:
+        st.session_state.session_openai_base_url = ""
 
     if "device_editor_items" not in st.session_state:
         _sync_editor_state_from_settings(st.session_state.applied_settings, reset_device_widgets=True)
 
 
 def _settings_signature(settings: dict) -> str:
-    return json.dumps(settings, ensure_ascii=False, sort_keys=True)
+    runtime_relevant_settings = {
+        "devices": settings.get("devices", []),
+    }
+    return json.dumps(runtime_relevant_settings, ensure_ascii=False, sort_keys=True)
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:
@@ -123,6 +140,12 @@ def _sync_editor_state_from_settings(settings: dict, reset_device_widgets: bool 
     st.session_state.editor_refresh_interval = int(settings["system"]["refresh_interval_seconds"])
     st.session_state.editor_developer_mode = bool(settings["system"].get("developer_mode", False))
     st.session_state.editor_show_structured_analysis = bool(settings["system"].get("show_structured_analysis", False))
+    st.session_state.editor_agent_mode = settings["system"].get("agent_mode", "local_rule")
+    st.session_state.editor_agent_model = settings["system"].get("agent_model", DEFAULT_REAL_LLM_MODEL)
+    st.session_state.editor_agent_use_local_fallback = bool(settings["system"].get("agent_use_local_fallback", True))
+    gateway = normalize_gateway_config(settings.get("gateway"))
+    st.session_state.editor_gateway_listen_host = gateway.listen_host
+    st.session_state.editor_gateway_port = gateway.port
 
     if reset_device_widgets:
         _clear_device_editor_widget_state()
@@ -134,17 +157,12 @@ def _sync_editor_state_from_settings(settings: dict, reset_device_widgets: bool 
 def _prime_device_editor_widget_state(device: dict) -> None:
     instance_id = device["instance_id"]
     template = st.session_state.templates[device["template_id"]]
-    protocol_defaults = _get_protocol_defaults(template)
 
     defaults = {
         f"editor_name_{instance_id}": device["name"],
         f"editor_id_{instance_id}": device["instance_id"],
         f"editor_template_{instance_id}": device["template_id"],
         f"editor_profile_{instance_id}": device.get("simulation_profile") or _get_default_profile(template),
-        f"editor_protocol_{instance_id}": device.get("communication", {}).get("protocol", protocol_defaults.get("id", "")),
-        f"editor_host_{instance_id}": device.get("communication", {}).get("host", protocol_defaults.get("default_host", "127.0.0.1")),
-        f"editor_port_{instance_id}": int(device.get("communication", {}).get("port", protocol_defaults.get("default_port", 10570))),
-        f"editor_path_{instance_id}": device.get("communication", {}).get("path", protocol_defaults.get("default_path", "/telemetry")),
     }
 
     for key, value in defaults.items():
@@ -163,13 +181,6 @@ def _get_profile_options(template) -> list[dict]:
     return template.simulation.get("profile_options", [])
 
 
-def _get_protocol_defaults(template) -> dict:
-    protocols = template.communication.get("protocols", [])
-    if not protocols:
-        return {}
-    return protocols[0]
-
-
 def _build_device_payload_from_widgets(device: dict) -> dict:
     instance_id = device["instance_id"]
     template_id = st.session_state[f"editor_template_{instance_id}"]
@@ -180,30 +191,33 @@ def _build_device_payload_from_widgets(device: dict) -> dict:
         "name": st.session_state[f"editor_name_{instance_id}"].strip(),
         "template_id": template_id,
         "simulation_profile": None,
-        "communication": {},
     }
 
     if template.source_type == "simulated":
         payload["simulation_profile"] = st.session_state.get(f"editor_profile_{instance_id}") or _get_default_profile(template)
-    else:
-        payload["communication"] = {
-            "protocol": st.session_state.get(f"editor_protocol_{instance_id}", "http_json"),
-            "host": st.session_state.get(f"editor_host_{instance_id}", "127.0.0.1").strip(),
-            "port": int(st.session_state.get(f"editor_port_{instance_id}", 10570)),
-            "path": st.session_state.get(f"editor_path_{instance_id}", "/telemetry").strip(),
-        }
 
     return payload
 
 
 def _save_settings_from_editor() -> None:
+    previous_settings = st.session_state.applied_settings
     settings = {
         "system": {
             "history_window": int(st.session_state.editor_history_window),
             "refresh_interval_seconds": int(st.session_state.editor_refresh_interval),
             "developer_mode": bool(st.session_state.editor_developer_mode),
             "show_structured_analysis": bool(st.session_state.editor_show_structured_analysis),
+            "agent_mode": st.session_state.editor_agent_mode,
+            "agent_model": (st.session_state.editor_agent_model or DEFAULT_REAL_LLM_MODEL).strip() or DEFAULT_REAL_LLM_MODEL,
+            "agent_use_local_fallback": bool(st.session_state.editor_agent_use_local_fallback),
         },
+        "gateway": normalize_gateway_config(
+            {
+                "listen_host": (st.session_state.editor_gateway_listen_host or "127.0.0.1").strip(),
+                "port": int(st.session_state.editor_gateway_port),
+                "path": DEFAULT_GATEWAY_PATH,
+            }
+        ).to_dict(),
         "devices": [_build_device_payload_from_widgets(item) for item in st.session_state.device_editor_items],
     }
     devices = settings["devices"]
@@ -223,7 +237,7 @@ def _save_settings_from_editor() -> None:
     st.session_state.applied_settings = settings
     _sync_editor_state_from_settings(settings, reset_device_widgets=True)
     st.session_state.report_cache = {}
-    st.session_state.request_runtime_reload = True
+    st.session_state.request_runtime_reload = previous_settings.get("devices") != settings["devices"]
     if st.session_state.selected_device_id not in {device["instance_id"] for device in devices}:
         st.session_state.selected_device_id = devices[0]["instance_id"]
     st.session_state.settings_feedback = ("success", "设置已自动保存并应用。")
@@ -255,22 +269,51 @@ def _handle_settings_dialog_dismiss() -> None:
     st.session_state.settings_dialog_open = False
 
 
-def _build_client_command(device_payload: dict, template) -> str:
+def _resolve_gateway_runtime_summary(settings: dict) -> dict:
+    desired_config = normalize_gateway_config(settings.get("gateway"))
+    status = load_gateway_manager_status()
+
+    if status and status.get("gateway"):
+        active_config = normalize_gateway_config(status.get("gateway"))
+        client_target = status.get("client_target") or build_gateway_client_target(active_config)
+        return {
+            "running": bool(status.get("running")),
+            "manager_pid": status.get("manager_pid"),
+            "active_config": active_config,
+            "desired_config": desired_config,
+            "client_target": client_target,
+            "last_error": status.get("last_error"),
+            "updated_at": status.get("updated_at"),
+        }
+
+    return {
+        "running": False,
+        "manager_pid": None,
+        "active_config": desired_config,
+        "desired_config": desired_config,
+        "client_target": build_gateway_client_target(desired_config),
+        "last_error": None,
+        "updated_at": None,
+    }
+
+
+def _build_client_command(device_payload: dict, template, gateway_summary: dict) -> str:
+    client_target = gateway_summary["client_target"]
     if template.template_id == "personal_pc_real":
         return (
             "python scripts/personal_pc_client.py "
             f"--instance-id {device_payload['instance_id']} "
-            f"--host {device_payload['communication'].get('host', '127.0.0.1')} "
-            f"--port {device_payload['communication'].get('port', 10570)} "
-            f"--path {device_payload['communication'].get('path', '/telemetry')}"
+            f"--gateway-host {client_target['host']} "
+            f"--gateway-port {client_target['port']} "
+            f"--gateway-path {client_target['path']}"
         )
     if template.template_id == "temp_humidity_real":
         return (
             "python scripts/temp_humidity_client.py "
             f"--instance-id {device_payload['instance_id']} "
-            f"--host {device_payload['communication'].get('host', '127.0.0.1')} "
-            f"--port {device_payload['communication'].get('port', 10570)} "
-            f"--path {device_payload['communication'].get('path', '/telemetry')}"
+            f"--gateway-host {client_target['host']} "
+            f"--gateway-port {client_target['port']} "
+            f"--gateway-path {client_target['path']}"
         )
     return ""
 
@@ -291,7 +334,7 @@ def _render_header() -> None:
             _open_settings_dialog()
 
 
-def _render_agent_chat_panel(agent_context: dict) -> None:
+def _render_agent_chat_panel(agent_context: dict, backend_config) -> None:
     header_col1, header_col2 = st.columns([1, 0.18])
     with header_col1:
         st.subheader("AI Agent 对话")
@@ -301,6 +344,21 @@ def _render_agent_chat_panel(agent_context: dict) -> None:
             st.rerun()
 
     st.caption(build_agent_hint(agent_context))
+    backend_label = {
+        "local_rule": "本地规则",
+        "real_llm": "真实模型",
+        "local_ollama": "本地 Ollama",
+    }.get(backend_config.mode, backend_config.mode)
+    fallback_label = "开启" if backend_config.use_local_fallback else "关闭"
+    st.caption(
+        f"当前对话后端：{backend_label}"
+        + (f"（模型：{backend_config.model}）" if backend_config.mode in {"real_llm", "local_ollama"} else "")
+        + f"；失败回退：{fallback_label}。"
+    )
+    if backend_config.mode == "real_llm":
+        st.caption("真实模型模式优先读取设置面板中的会话临时 Key，其次读取环境变量 `OPENAI_API_KEY`。")
+    elif backend_config.mode == "local_ollama":
+        st.caption("本地 Ollama 模式默认连接 `http://127.0.0.1:11434`，可在设置面板里临时改 Base URL。")
 
     if not st.session_state.agent_messages:
         with st.chat_message("assistant"):
@@ -315,7 +373,12 @@ def _render_agent_chat_panel(agent_context: dict) -> None:
     prompt = st.chat_input("请输入你想询问的问题，例如：这台设备现在怎么样？")
     if prompt:
         st.session_state.agent_messages.append({"role": "user", "content": prompt})
-        reply = generate_agent_reply(prompt, agent_context)
+        reply = generate_agent_reply(
+            prompt,
+            agent_context,
+            backend_config=backend_config,
+            conversation_history=st.session_state.agent_messages,
+        )
         st.session_state.agent_messages.append({"role": "assistant", "content": reply})
         st.rerun()
 
@@ -330,10 +393,62 @@ def _render_settings_dialog() -> None:
     st.caption("关闭设置面板后将自动保存并应用当前修改。")
 
     st.divider()
+    st.subheader("共享网关设置")
+    gateway_summary = _resolve_gateway_runtime_summary(st.session_state.applied_settings)
+    st.caption("所有 HTTP 真实设备共用同一个遥测网关入口，设备卡片里不再单独维护 host / port / path。")
+    gateway_col1, gateway_col2 = st.columns([1.2, 0.8])
+    gateway_col1.text_input("网关监听地址", key="editor_gateway_listen_host")
+    gateway_col2.number_input("网关监听端口", min_value=1, max_value=65535, step=1, key="editor_gateway_port")
+    st.caption(f"固定路径：`{DEFAULT_GATEWAY_PATH}`。")
+    st.caption("建议使用独立后端管理主程序托管网关：`python scripts/run_backend.py`。保存全局网关设置后，manager 会自动按新配置重载服务。")
+    st.code("python scripts/run_backend.py", language="bash")
+
+    active_gateway = gateway_summary["active_config"]
+    client_target = gateway_summary["client_target"]
+    if gateway_summary["running"]:
+        st.success(
+            "当前共享网关运行中："
+            f" PID {gateway_summary['manager_pid']}，"
+            f"监听 {active_gateway.listen_host}:{active_gateway.port}{active_gateway.path}，"
+            f"客户端建议连接 {client_target['host']}:{client_target['port']}{client_target['path']}。"
+        )
+    else:
+        st.warning("当前未检测到 backend manager 正在托管共享网关。页面仍可保存配置，但不会自动重启服务。")
+    if gateway_summary["last_error"]:
+        st.error(gateway_summary["last_error"])
+
+    st.divider()
+    st.subheader("Agent 设置")
+    st.selectbox(
+        "对话后端",
+        options=["local_rule", "real_llm", "local_ollama"],
+        key="editor_agent_mode",
+        format_func=lambda mode: {
+            "local_rule": "本地规则",
+            "real_llm": "真实模型",
+            "local_ollama": "本地 Ollama",
+        }.get(mode, mode),
+    )
+    st.text_input("模型名称", key="editor_agent_model")
+    st.toggle("真实模型失败时自动回退到本地规则", key="editor_agent_use_local_fallback")
+    current_agent_mode = st.session_state.editor_agent_mode
+    if current_agent_mode == "real_llm":
+        st.text_input("OpenAI API Key（仅当前会话）", key="session_openai_api_key", type="password")
+        st.text_input("OpenAI Base URL（可选，仅当前会话）", key="session_openai_base_url")
+        st.caption("上面两个输入框仅保存在当前页面会话中，不会写入本地设置文件。")
+        st.caption("如果留空，系统会继续读取环境变量 `OPENAI_API_KEY` 和 `OPENAI_BASE_URL`。")
+    elif current_agent_mode == "local_ollama":
+        st.text_input("Ollama Base URL（可选，仅当前会话）", key="session_openai_base_url")
+        st.caption(f"模型名称建议填写 `{DEFAULT_OLLAMA_MODEL}`；Base URL 留空时默认 `http://127.0.0.1:11434`。")
+        st.caption("Base URL 仅保存在当前页面会话中，不会写入本地设置文件。")
+    else:
+        st.caption("本地规则模式不需要额外模型服务配置。")
+
+    st.divider()
     developer_mode_enabled = st.toggle("开发者模式", key="editor_developer_mode")
 
     if developer_mode_enabled:
-        st.caption("设备清单、模拟细分类型、结构化分析展示和真实设备通讯方式在开发者模式中维护。")
+        st.caption("设备清单、模拟细分类型和结构化分析展示在开发者模式中维护。")
         st.toggle("显示结构化分析结果", key="editor_show_structured_analysis")
 
         if st.button("+ 添加设备", use_container_width=True):
@@ -378,27 +493,17 @@ def _render_settings_dialog() -> None:
                             ),
                         )
                 else:
-                    protocol_options = selected_template.communication.get("protocols", [])
-                    protocol_ids = [protocol["id"] for protocol in protocol_options]
-                    st.selectbox(
-                        "通讯协议",
-                        options=protocol_ids,
-                        key=f"editor_protocol_{instance_id}",
-                        format_func=lambda protocol_id: next(
-                            protocol["label"] for protocol in protocol_options if protocol["id"] == protocol_id
-                        ),
+                    st.caption("这类真实设备共用上方“共享网关设置”里的同一个 HTTP 入口，只通过 `instance_id` 区分设备。")
+                    client_preview = _build_client_command(
+                        _build_device_payload_from_widgets(item),
+                        selected_template,
+                        gateway_summary,
                     )
-                    comm_col1, comm_col2, comm_col3 = st.columns([1.2, 0.8, 1.2])
-                    comm_col1.text_input("主机地址", key=f"editor_host_{instance_id}")
-                    comm_col2.number_input("端口", min_value=1, max_value=65535, step=1, key=f"editor_port_{instance_id}")
-                    comm_col3.text_input("路径", key=f"editor_path_{instance_id}")
-
-                    client_preview = _build_client_command(_build_device_payload_from_widgets(item), selected_template)
                     if client_preview:
                         st.caption("客户端示例命令")
                         st.code(client_preview, language="bash")
     else:
-        st.info("当前为正式展示模式。设备清单与通讯配置已隐藏，保留基础系统设置。")
+        st.info("当前为正式展示模式。设备清单和开发者级网关配置已隐藏，保留基础系统设置。")
 
 
 def _ensure_runtime() -> None:
@@ -567,6 +672,14 @@ refresh_interval_seconds = int(settings["system"]["refresh_interval_seconds"])
 history_window = int(settings["system"]["history_window"])
 developer_mode = bool(settings["system"].get("developer_mode", False))
 show_structured_analysis = bool(settings["system"].get("show_structured_analysis", False))
+persisted_agent_backend_config = build_agent_backend_config(settings)
+agent_backend_config = AgentBackendConfig(
+    mode=persisted_agent_backend_config.mode,
+    model=persisted_agent_backend_config.model,
+    use_local_fallback=persisted_agent_backend_config.use_local_fallback,
+    api_key_override=(st.session_state.get("session_openai_api_key") or "").strip() or None,
+    base_url_override=(st.session_state.get("session_openai_base_url") or "").strip() or None,
+)
 
 
 @st.fragment(run_every=f"{refresh_interval_seconds}s" if st.session_state.running else None)
@@ -644,7 +757,7 @@ def render_dashboard() -> None:
         history_window=history_window,
     )
     st.session_state.agent_context = agent_context
-    _render_agent_chat_panel(agent_context)
+    _render_agent_chat_panel(agent_context, agent_backend_config)
 
     if developer_mode and show_structured_analysis:
         with st.expander("结构化分析结果（开发者模式）", expanded=False):

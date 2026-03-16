@@ -18,9 +18,9 @@
 | 个人 PC 真实设备 | 已完成 |
 | 温湿度真实设备 | 已完成 |
 | 本地 AI 总结 | 已完成 |
-| 聊天式 AI 助手 | 本地版已完成 |
-| 真实大模型接入 | 规划中 |
-| MPC Skill 平台联调 | 规划中 |
+| 聊天式 AI 助手 | 已支持本地规则 / 本地 Ollama / 真实模型 |
+| 真实大模型接入 | 已支持后端适配 / 待配置 API Key |
+| MPC Skill 平台联调 | 已完成本地 Tool/Skill 适配层 |
 
 ## 文档导航
 
@@ -44,12 +44,13 @@
 flowchart LR
     A["设备模板配置<br/>device_templates/*.json"] --> B["运行时编排<br/>fleet_runtime.py"]
     B --> C["模拟设备引擎<br/>SGCC / 温湿度"]
-    B --> D["真实设备接入<br/>HTTP Telemetry Gateway"]
+    B --> D["真实设备接入<br/>Shared HTTP Telemetry Gateway"]
     C --> E["模板感知分析<br/>template_analyzer.py"]
     D --> E
     E --> F["本地 AI 风格总结<br/>report_generator.py"]
     E --> G["Streamlit 可视化面板<br/>streamlit_app.py"]
     F --> G
+    I["后端管理主程序<br/>scripts/run_backend.py"] --> D
     E --> H["后续扩展<br/>MPC Skill / 大模型对话"]
 ```
 
@@ -70,22 +71,30 @@ flowchart LR
 pip install -r requirements.txt
 ```
 
+如需启用真实模型聊天模式，请先设置环境变量：
+
+```bash
+set OPENAI_API_KEY=<你的 API Key>
+```
+
+如需启用本地 7B 模型聊天模式，可安装 `Ollama` 并拉取 `qwen2.5:7b`，然后在页面设置中把对话后端切到 `local_ollama`。
+
 启动页面：
 
 ```bash
 streamlit run streamlit_app.py --server.port 7787
 ```
 
-启动真实设备网关：
+启动共享后端管理主程序：
 
 ```bash
-python scripts/run_device_gateway.py --host 127.0.0.1 --port 10570 --path /telemetry
+python scripts/run_backend.py
 ```
 
 启动个人 PC 客户端：
 
 ```bash
-python scripts/personal_pc_client.py --instance-id <设备实例ID> --host 127.0.0.1 --port 10570 --path /telemetry
+python scripts/personal_pc_client.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry
 ```
 
 运行测试：

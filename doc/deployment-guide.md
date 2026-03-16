@@ -24,36 +24,42 @@ streamlit run streamlit_app.py --server.port 7787
 http://localhost:7787
 ```
 
-## 4. 启动真实设备网关
+## 4. 启动共享后端管理主程序
 
 ```bash
-python scripts/run_device_gateway.py --host 127.0.0.1 --port 10570 --path /telemetry
+python scripts/run_backend.py
 ```
 
-默认接收地址：
+默认共享接收地址：
 
 ```text
 http://127.0.0.1:10570/telemetry
 ```
+
+说明：
+
+- 该 manager 会负责托管共享 HTTP 遥测网关
+- 页面中的全局网关配置保存后，manager 会自动按新配置重载
+- 所有 HTTP 真实设备共用同一个 `/telemetry` 入口，靠 `instance_id` 区分
 
 ## 5. 启动个人 PC 客户端
 
 先在页面的开发者模式中添加一个“个人 PC（真实设备）”，记下它的 `设备实例 ID`，然后执行：
 
 ```bash
-python scripts/personal_pc_client.py --instance-id <设备实例ID> --host 127.0.0.1 --port 10570 --path /telemetry
+python scripts/personal_pc_client.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry
 ```
 
 如果只发送一次数据用于测试：
 
 ```bash
-python scripts/personal_pc_client.py --instance-id <设备实例ID> --host 127.0.0.1 --port 10570 --path /telemetry --once
+python scripts/personal_pc_client.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry --once
 ```
 
 ## 6. 启动温湿度客户端
 
 ```bash
-python scripts/temp_humidity_client.py --instance-id <设备实例ID> --host 127.0.0.1 --port 10570 --path /telemetry --simulate
+python scripts/temp_humidity_client.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry --simulate
 ```
 
 ## 7. 本地设置文件
@@ -95,9 +101,9 @@ python -m pytest
 
 ### 真实设备没有数据
 
-- 先确认网关是否已运行
+- 先确认 `python scripts/run_backend.py` 是否已运行
 - 再确认客户端 `instance_id` 与页面配置一致
-- 再检查客户端上报地址是否为 `127.0.0.1:10570/telemetry`
+- 再检查客户端上报地址是否指向仪表盘所在机器的网关地址，例如 `192.168.1.10:10570/telemetry`
 
 ### 个人 PC 数值和任务管理器有差异
 

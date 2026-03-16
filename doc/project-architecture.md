@@ -32,7 +32,7 @@
 | 模板层 | 定义设备类型、指标、协议、阈值规则 | JSON |
 | 分析层 | 阈值分析、离线判定、异常总结 | Python 纯函数 |
 | 总结层 | 生成 AI 风格文本报告 | Python 模板引擎 |
-| 接入层 | 接收真实设备上报 | HTTP 网关 |
+| 接入层 | 接收真实设备上报 | 共享 HTTP 网关 |
 | 客户端层 | 向网关发送真实指标 | Python 脚本 / PowerShell 性能采样 |
 
 ## 4. 运行架构
@@ -64,12 +64,13 @@ flowchart LR
 
 ### 5.2 真实设备数据流
 
-1. 真实客户端采集本机或传感器数据
-2. 客户端向本地 HTTP 网关推送 JSON
-3. 网关将事件写入本地存储
-4. 页面运行时读取最新事件
-5. 分析器输出结构化结果
-6. 页面显示最新状态与历史曲线
+1. 独立后端管理主程序启动并托管共享 HTTP 网关
+2. 真实客户端采集本机或传感器数据
+3. 客户端向共享 `/telemetry` 入口推送 JSON
+4. 网关根据 `instance_id` 归档事件到本地存储
+5. 页面运行时读取最新事件
+6. 分析器输出结构化结果
+7. 页面显示最新状态与历史曲线
 
 ## 6. 目录与模块映射
 
@@ -83,14 +84,15 @@ flowchart LR
 | SGCC 分析 | `app/analysis/analyzer.py` | SGCC 规则判断 |
 | 模板分析 | `app/analysis/template_analyzer.py` | 通用阈值分析与离线判定 |
 | 报告生成 | `app/agent/report_generator.py` | 本地 AI 风格总结 |
-| 真实设备网关 | `scripts/run_device_gateway.py` | 接收 HTTP 遥测 |
+| 后端管理主程序 | `scripts/run_backend.py` | 托管共享 HTTP 网关并按配置重载 |
+| 真实设备网关 | `app/services/gateway_service.py` | 共享 HTTP 遥测服务与状态文件 |
 | 个人 PC 客户端 | `scripts/personal_pc_client.py` | CPU / 内存 / 磁盘活动率 / GPU 上报 |
 
 ## 7. 当前约束
 
 - 暂未接入真实大模型 API
 - 暂未做聊天式问答 UI
-- 真实设备接入目前以本地 HTTP 网关为主
+- 真实设备接入目前以共享 HTTP 网关为主
 - 本地存储仍以 JSON 文件为主，尚未引入数据库
 
 ## 8. 给后续协作者的极简上下文
