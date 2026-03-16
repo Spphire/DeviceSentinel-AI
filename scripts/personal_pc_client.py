@@ -10,6 +10,51 @@ from datetime import datetime
 from urllib import request
 
 
+POWERSHELL_METRIC_SCRIPT = r"""
+$cpu = Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq '_Total' } |
+    Select-Object -First 1
+$os = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
+$disk = Get-CimInstance Win32_PerfFormattedData_PerfDisk_LogicalDisk -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq '_Total' } |
+    Select-Object -First 1
+$gpuSamples = Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine -ErrorAction SilentlyContinue
+
+$gpuUsage = 0.0
+if ($gpuSamples) {
+    $maxPerGpu = @{}
+    foreach ($sample in $gpuSamples) {
+        $usage = [double]$sample.UtilizationPercentage
+        if ($sample.Name -match 'phys_(\d+)') {
+            $gpuId = $Matches[1]
+            if (-not $maxPerGpu.ContainsKey($gpuId) -or $usage -gt $maxPerGpu[$gpuId]) {
+                $maxPerGpu[$gpuId] = $usage
+            }
+        }
+    }
+
+    if ($maxPerGpu.Count -gt 0) {
+        $gpuUsage = ($maxPerGpu.Values | Measure-Object -Maximum).Maximum
+    } else {
+        $gpuUsage = ($gpuSamples | Measure-Object -Property UtilizationPercentage -Maximum).Maximum
+    }
+}
+
+$memoryUsage = (($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / $os.TotalVisibleMemorySize) * 100
+$diskActivity = if ($disk) { [double]$disk.PercentDiskTime } else { 0.0 }
+$cpuUsage = if ($cpu) { [double]$cpu.PercentProcessorTime } else { 0.0 }
+
+$result = @{
+    cpu_usage = [math]::Round([math]::Min([math]::Max($cpuUsage, 0), 100), 1)
+    memory_usage = [math]::Round([math]::Min([math]::Max($memoryUsage, 0), 100), 1)
+    disk_activity = [math]::Round([math]::Min([math]::Max($diskActivity, 0), 100), 1)
+    gpu_usage = [math]::Round([math]::Min([math]::Max([double]$gpuUsage, 0), 100), 1)
+}
+
+$result | ConvertTo-Json -Compress
+"""
+
+
 def send_payload(url: str, payload: dict) -> None:
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = request.Request(url=url, data=data, headers={"Content-Type": "application/json"}, method="POST")
@@ -17,32 +62,23 @@ def send_payload(url: str, payload: dict) -> None:
         print(response.read().decode("utf-8"))
 
 
-def _run_powershell(command: str) -> float:
+def _run_powershell(command: str) -> str:
     completed = subprocess.run(
         ["powershell", "-NoProfile", "-Command", command],
         capture_output=True,
         text=True,
         check=True,
     )
-    return round(float(completed.stdout.strip()), 1)
+    return completed.stdout.strip()
 
 
 def collect_metrics() -> dict:
-    cpu_usage = _run_powershell(
-        "(Get-Counter '\\Processor(_Total)\\% Processor Time').CounterSamples[0].CookedValue"
-    )
-    memory_usage = _run_powershell(
-        "$os = Get-CimInstance Win32_OperatingSystem; "
-        "[math]::Round((($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / $os.TotalVisibleMemorySize) * 100, 1)"
-    )
-    disk_usage = _run_powershell(
-        "$disk = Get-CimInstance Win32_LogicalDisk -Filter \"DeviceID='C:'\"; "
-        "[math]::Round((($disk.Size - $disk.FreeSpace) / $disk.Size) * 100, 1)"
-    )
+    payload = json.loads(_run_powershell(POWERSHELL_METRIC_SCRIPT))
     return {
-        "cpu_usage": cpu_usage,
-        "memory_usage": memory_usage,
-        "disk_usage": disk_usage,
+        "cpu_usage": round(float(payload.get("cpu_usage", 0.0)), 1),
+        "memory_usage": round(float(payload.get("memory_usage", 0.0)), 1),
+        "disk_activity": round(float(payload.get("disk_activity", 0.0)), 1),
+        "gpu_usage": round(float(payload.get("gpu_usage", 0.0)), 1),
     }
 
 

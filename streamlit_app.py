@@ -32,6 +32,16 @@ STATUS_LABELS = {
 RISK_LABELS = {"low": "低", "medium": "中", "high": "高", "unknown": "未知", "-": "-"}
 DEVICE_STATUS_LABELS = {"online": "在线", "offline": "离线"}
 SOURCE_TYPE_LABELS = {"simulated": "模拟设备", "real": "真实设备"}
+DEVICE_EDITOR_WIDGET_PREFIXES = (
+    "editor_name_",
+    "editor_id_",
+    "editor_template_",
+    "editor_profile_",
+    "editor_protocol_",
+    "editor_host_",
+    "editor_port_",
+    "editor_path_",
+)
 
 
 def _initialize_state() -> None:
@@ -41,11 +51,6 @@ def _initialize_state() -> None:
     if "applied_settings" not in st.session_state:
         settings = load_persisted_dashboard_settings()
         st.session_state.applied_settings = settings
-        st.session_state.device_editor_items = copy.deepcopy(settings["devices"])
-        st.session_state.editor_history_window = settings["system"]["history_window"]
-        st.session_state.editor_refresh_interval = settings["system"]["refresh_interval_seconds"]
-        st.session_state.editor_developer_mode = settings["system"].get("developer_mode", False)
-        st.session_state.editor_show_structured_analysis = settings["system"].get("show_structured_analysis", False)
 
     if "runtime_signature" not in st.session_state:
         st.session_state.runtime_signature = None
@@ -62,6 +67,9 @@ def _initialize_state() -> None:
         st.session_state.settings_dialog_open = False
     if "settings_feedback" not in st.session_state:
         st.session_state.settings_feedback = None
+
+    if "device_editor_items" not in st.session_state:
+        _sync_editor_state_from_settings(st.session_state.applied_settings, reset_device_widgets=True)
 
 
 def _settings_signature(settings: dict) -> str:
@@ -96,6 +104,26 @@ def _format_relative_time(last_heartbeat: str | None, current_time: datetime | N
 
 def _chunked(items: list, size: int) -> list[list]:
     return [items[index : index + size] for index in range(0, len(items), size)]
+
+
+def _clear_device_editor_widget_state() -> None:
+    for key in list(st.session_state.keys()):
+        if key.startswith(DEVICE_EDITOR_WIDGET_PREFIXES):
+            del st.session_state[key]
+
+
+def _sync_editor_state_from_settings(settings: dict, reset_device_widgets: bool = False) -> None:
+    st.session_state.device_editor_items = copy.deepcopy(settings["devices"])
+    st.session_state.editor_history_window = int(settings["system"]["history_window"])
+    st.session_state.editor_refresh_interval = int(settings["system"]["refresh_interval_seconds"])
+    st.session_state.editor_developer_mode = bool(settings["system"].get("developer_mode", False))
+    st.session_state.editor_show_structured_analysis = bool(settings["system"].get("show_structured_analysis", False))
+
+    if reset_device_widgets:
+        _clear_device_editor_widget_state()
+
+    for device in st.session_state.device_editor_items:
+        _prime_device_editor_widget_state(device)
 
 
 def _prime_device_editor_widget_state(device: dict) -> None:
@@ -188,7 +216,7 @@ def _save_settings_from_editor() -> None:
 
     save_persisted_dashboard_settings(settings)
     st.session_state.applied_settings = settings
-    st.session_state.device_editor_items = copy.deepcopy(devices)
+    _sync_editor_state_from_settings(settings, reset_device_widgets=True)
     st.session_state.report_cache = {}
     st.session_state.request_runtime_reload = True
     if st.session_state.selected_device_id not in {device["instance_id"] for device in devices}:
@@ -242,6 +270,11 @@ def _build_client_command(device_payload: dict, template) -> str:
     return ""
 
 
+def _open_settings_dialog() -> None:
+    _sync_editor_state_from_settings(st.session_state.applied_settings, reset_device_widgets=True)
+    st.session_state.settings_dialog_open = True
+
+
 def _render_header() -> None:
     title_col, action_col = st.columns([12, 1], vertical_alignment="top")
     with title_col:
@@ -250,7 +283,7 @@ def _render_header() -> None:
     with action_col:
         st.markdown("<div style='height: 0.35rem;'></div>", unsafe_allow_html=True)
         if st.button("⚙", key="open_settings_dialog", help="打开设置", type="tertiary", use_container_width=True):
-            st.session_state.settings_dialog_open = True
+            _open_settings_dialog()
 
 
 @st.dialog("系统设置", width="large", dismissible=True, on_dismiss=_handle_settings_dialog_dismiss)
@@ -263,9 +296,9 @@ def _render_settings_dialog() -> None:
     st.caption("关闭设置面板后将自动保存并应用当前修改。")
 
     st.divider()
-    st.toggle("开发者模式", key="editor_developer_mode")
+    developer_mode_enabled = st.toggle("开发者模式", key="editor_developer_mode")
 
-    if st.session_state.editor_developer_mode:
+    if developer_mode_enabled:
         st.caption("设备清单、模拟细分类型、结构化分析展示和真实设备通讯方式在开发者模式中维护。")
         st.toggle("显示结构化分析结果", key="editor_show_structured_analysis")
 
@@ -562,7 +595,7 @@ def render_dashboard() -> None:
     metric_chunks = _chunked(template.metrics, 3)
 
     for chunk in metric_chunks:
-        chart_columns = st.columns(len(chunk))
+        chart_columns = st.columns(3)
         for column, metric in zip(chart_columns, chunk):
             with column:
                 st.caption(f"{metric.label}曲线")

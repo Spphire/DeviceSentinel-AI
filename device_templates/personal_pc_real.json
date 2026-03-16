@@ -6,7 +6,8 @@
   "metrics": [
     { "metric_id": "cpu_usage", "label": "CPU 使用率", "unit": "%", "precision": 1 },
     { "metric_id": "memory_usage", "label": "内存使用率", "unit": "%", "precision": 1 },
-    { "metric_id": "disk_usage", "label": "磁盘使用率", "unit": "%", "precision": 1 }
+    { "metric_id": "disk_activity", "label": "磁盘活动率", "unit": "%", "precision": 1 },
+    { "metric_id": "gpu_usage", "label": "GPU 使用率", "unit": "%", "precision": 1 }
   ],
   "communication": {
     "protocols": [
@@ -20,7 +21,8 @@
     "metric_rules": {
       "cpu_usage": { "label": "CPU 使用率", "high": 85, "severity": "medium", "suggestion": "建议检查后台高占用进程与任务调度情况。" },
       "memory_usage": { "label": "内存使用率", "high": 90, "severity": "medium", "suggestion": "建议检查内存占用异常的应用程序或服务。" },
-      "disk_usage": { "label": "磁盘使用率", "high": 92, "severity": "high", "suggestion": "建议清理磁盘空间并核查日志或缓存暴涨情况。" }
+      "disk_activity": { "label": "磁盘活动率", "high": 90, "severity": "medium", "suggestion": "建议检查磁盘读写压力、后台扫描任务或异常日志写入情况。" },
+      "gpu_usage": { "label": "GPU 使用率", "high": 95, "severity": "medium", "suggestion": "建议检查图形渲染、视频编解码或 AI 计算任务负载情况。" }
     }
   }
 }

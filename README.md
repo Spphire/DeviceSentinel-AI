@@ -1,97 +1,68 @@
 # 基于 MPC Skill 的电气设备状态监测 AI Agent 系统
 
-本项目面向学生级毕业设计 / 课程设计，聚焦实现一条清晰可运行的核心链路：
+面向课程设计 / 毕业设计的模板驱动监测系统，当前已经实现：
 
-1. Python 生成配网侧低压电气设备模拟数据
-2. 通过 MQTT 形式适配上云传输场景
-3. 用 Python 分析函数完成阈值判断、故障匹配、规范关联
-4. 用 MPC Skill 风格的函数定义将分析能力暴露给大模型 Agent
-5. 生成符合国网运维语气的智能分析报告
-6. 用 Streamlit 展示设备状态、异常告警和 AI 总结
+- 模拟设备与真实设备混合接入
+- 本地规则分析与 AI 风格总结
+- Streamlit 可视化面板
+- 本地持久化设置
+- 个人 PC 与温湿度真实设备客户端
+- 面向后续 MPC Skill / 大模型接入的扩展接口
 
-## 1. 需求对接结果
+## 项目状态
 
-当前版本按以下边界实现：
+| 项目项 | 当前状态 |
+| --- | --- |
+| 页面演示 | 已完成 |
+| SGCC 模拟设备 | 已完成 |
+| 个人 PC 真实设备 | 已完成 |
+| 温湿度真实设备 | 已完成 |
+| 本地 AI 总结 | 已完成 |
+| 聊天式 AI 助手 | 规划中 |
+| 真实大模型接入 | 规划中 |
+| MPC Skill 平台联调 | 规划中 |
 
-- 先完成本地可运行闭环，不依赖真实硬件
-- 数据字段固定为 `device_id`、`temperature`、`voltage`、`current`、`timestamp`
-- 阈值规则优先覆盖温度、电压、电流三类典型异常
-- 规范关联以 `DL/T 448-2016` 为主，保留后续扩展接口
-- 阿里云 IoT 平台与百炼 MPC Skill 先提供配置模板和对接代码骨架
-- 展示层使用 `Streamlit`，便于快速演示和答辩
+## 文档导航
 
-## 2. 项目架构
+项目文档已经整理到 [`doc/`](doc/README.md)：
+
+| 文档 | 说明 |
+| --- | --- |
+| [`doc/README.md`](doc/README.md) | 文档总览与阅读顺序 |
+| [`doc/project-architecture.md`](doc/project-architecture.md) | 项目架构说明与上下文背景 |
+| [`doc/completed-features.md`](doc/completed-features.md) | 已完成功能清单 |
+| [`doc/deployment-guide.md`](doc/deployment-guide.md) | 部署与使用说明 |
+| [`doc/development-history.md`](doc/development-history.md) | GitHub 展示版开发历史 |
+| [`doc/roadmap.md`](doc/roadmap.md) | 下一阶段规划 |
+| [`doc/github-publishing-guide.md`](doc/github-publishing-guide.md) | GitHub 仓库发布与展示建议 |
+| [`docs/mpc_skill_guide.md`](docs/mpc_skill_guide.md) | MPC Skill 接入参考 |
+| [`DEVELOPMENT_HISTORY.md`](DEVELOPMENT_HISTORY.md) | 给后续 Codex / 续会话使用的根目录上下文文件 |
+
+## 核心架构
 
 ```mermaid
 flowchart LR
-    A["模拟数据生成模块\nPython"] --> B["MQTT 适配层\npaho-mqtt / 本地消息"]
-    B --> C["数据接入层\nJSON 解析"]
-    C --> D["分析函数库\n阈值分析 / 故障匹配 / 规范关联"]
-    D --> E["MPC Skill 适配层\n函数定义 / 入参出参模板"]
-    E --> F["大模型 Agent\nFunction Call / 总结生成"]
-    D --> G["可视化展示层\nStreamlit"]
+    A["设备模板配置<br/>device_templates/*.json"] --> B["运行时编排<br/>fleet_runtime.py"]
+    B --> C["模拟设备引擎<br/>SGCC / 温湿度"]
+    B --> D["真实设备接入<br/>HTTP Telemetry Gateway"]
+    C --> E["模板感知分析<br/>template_analyzer.py"]
+    D --> E
+    E --> F["本地 AI 风格总结<br/>report_generator.py"]
+    E --> G["Streamlit 可视化面板<br/>streamlit_app.py"]
     F --> G
-    H["国网运维规范知识\nDL/T 448-2016"] --> D
-    H --> F
+    E --> H["后续扩展<br/>MPC Skill / 大模型对话"]
 ```
 
-## 3. 分层设计与技术栈
+## 当前支持的设备模板
 
-| 层级 | 核心功能 | 技术栈 | 输入 | 输出 |
-| --- | --- | --- | --- | --- |
-| 项目基础层 | 依赖管理、配置管理、阈值常量 | Python 3.11、`dataclasses`、`.env` 可扩展 | 配置参数 | 统一配置对象 |
-| 数据层 | 模拟设备运行数据、MQTT 消息封装 | Python、`random`、`paho-mqtt` | 无 / 模拟控制参数 | 设备数据 JSON |
-| 接入层 | 数据拉取与消息解码 | Python、JSON | MQTT / 本地输入 | 标准化设备对象 |
-| 分析层 | 阈值判断、故障匹配、规范关联 | Python 纯函数 | 设备对象 | 结构化分析结果 JSON |
-| MPC Skill 层 | 函数注册模板、入参与出参定义 | JSON Schema、百炼 MPC Skill 配置模板 | Agent 调用参数 | 函数执行结果 |
-| Agent 层 | 生成国网风格智能总结报告 | Python 模板化报告引擎，可接入 LLM API | 分析结果 | 自然语言报告 |
-| 展示层 | 状态展示、告警展示、AI 总结 | Streamlit、Pandas | 分析结果、报告 | 网页可视化 |
-| 测试层 | 规则校验、演示验证 | `pytest` | 测试样本 | 测试报告 |
+| 模板 ID | 类型 | 数据来源 | 主要指标 |
+| --- | --- | --- | --- |
+| `sgcc_simulated` | SGCC 配电设备 | 模拟 | 温度 / 电压 / 电流 |
+| `personal_pc_real` | 个人 PC | 真实设备 | CPU / 内存 / 磁盘活动率 / GPU |
+| `temp_humidity_simulated` | 温湿度设备 | 模拟 | 温度 / 湿度 |
+| `temp_humidity_real` | 温湿度设备 | 真实设备 | 温度 / 湿度 |
 
-## 4. 开发规划表
-
-| 阶段 | 目标 | 主要产出 | 技术栈 | 优先级 |
-| --- | --- | --- | --- | --- |
-| 第 1 阶段 | 搭建项目骨架和配置常量 | 目录结构、依赖文件、阈值配置 | Python | 高 |
-| 第 2 阶段 | 实现模拟数据生成 | 随机设备数据、异常样本生成器 | Python、`random` | 高 |
-| 第 3 阶段 | 实现核心分析函数 | 异常检测、故障分类、规范引用 | Python | 高 |
-| 第 4 阶段 | 实现 MPC Skill 适配 | Skill 函数模板、参数 Schema、调用样例 | JSON、Python | 高 |
-| 第 5 阶段 | 实现 Agent 报告生成 | 国网运维风格总结模板 | Python | 高 |
-| 第 6 阶段 | 实现网页演示 | Streamlit 页面、表格、告警卡片 | Streamlit、Pandas | 中 |
-| 第 7 阶段 | 扩展 MQTT / 阿里云接入 | 发布脚本、订阅脚本、接入说明 | `paho-mqtt` | 中 |
-| 第 8 阶段 | 测试与验收 | 单元测试、演示脚本、答辩说明 | `pytest` | 高 |
-
-## 5. 推荐目录结构
-
-```text
-SGCC_ElecDevice_Monitor_AI_MPC/
-├─ app/
-│  ├─ analysis/
-│  ├─ agent/
-│  ├─ config/
-│  ├─ data/
-│  ├─ mpc/
-│  └─ services/
-├─ docs/
-├─ scripts/
-├─ tests/
-├─ requirements.txt
-└─ streamlit_app.py
-```
-
-## 6. 本轮开发目标
-
-本轮先完成以下内容：
-
-- 项目基础配置
-- 模拟数据生成
-- Python 分析函数封装
-- MPC Skill 配置模板
-- 本地 Agent 报告生成
-- Streamlit 演示页
-- 基础测试
-
-## 7. 运行方式
+## 快速开始
 
 安装依赖：
 
@@ -99,32 +70,52 @@ SGCC_ElecDevice_Monitor_AI_MPC/
 pip install -r requirements.txt
 ```
 
-运行命令行演示：
+启动页面：
 
 ```bash
-python scripts/run_demo.py
+streamlit run streamlit_app.py --server.port 7787
 ```
 
-运行 MQTT 发布脚本：
+启动真实设备网关：
 
 ```bash
-python scripts/publish_simulated_data.py
+python scripts/run_device_gateway.py --host 127.0.0.1 --port 10570 --path /telemetry
 ```
 
-运行 MQTT 订阅分析脚本：
+启动个人 PC 客户端：
 
 ```bash
-python scripts/subscribe_and_analyze.py
-```
-
-运行网页演示：
-
-```bash
-streamlit run streamlit_app.py
+python scripts/personal_pc_client.py --instance-id <设备实例ID> --host 127.0.0.1 --port 10570 --path /telemetry
 ```
 
 运行测试：
 
 ```bash
-pytest
+python -m pytest
 ```
+
+## 目录结构
+
+```text
+SGCC_ElecDevice_Monitor_AI_MPC/
+├─ app/
+├─ device_templates/
+├─ doc/
+├─ docs/
+├─ scripts/
+├─ storage/
+├─ tests/
+├─ DEVELOPMENT_HISTORY.md
+├─ requirements.txt
+└─ streamlit_app.py
+```
+
+## GitHub 展示建议
+
+将仓库推到 GitHub 后，建议同时配置这些项目元素：
+
+1. 仓库描述填写为“模板驱动的电气设备状态监测 AI Agent 演示系统，支持模拟设备与真实设备混合接入”。
+2. 置顶阅读入口使用本页 `README.md`。
+3. 仓库 About 区补充 Topics：`streamlit`、`iot`、`ai-agent`、`mpc-skill`、`graduation-project`。
+4. 使用 `doc/` 目录承载正式文档，使用根目录 `DEVELOPMENT_HISTORY.md` 保存续会话上下文。
+5. 使用 `.github/` 中的 Issue / PR 模板统一后续协作记录。
