@@ -4,7 +4,7 @@
 
 ## 1. 当前阶段
 
-项目当前已经完成到“第十四阶段”：
+项目当前已经完成到“第十八阶段”：
 
 - 模板驱动的混合设备监测面板已稳定可用
 - 聊天 Agent 已支持 `local_rule / real_llm / local_ollama`
@@ -12,6 +12,7 @@
 - 真实设备接入已收敛为“共享 HTTP 网关 + backend manager”
 - GitHub 已补上状态摘要发布工作流，可自动发布静态状态页
 - GitHub Projects 文档同步脚本已落地，可把当前计划、上下文和阶段里程碑同步到 Projects v2 看板
+- GitHub Projects 当前已按收工状态整理，既有阶段节点已统一标记为 `Done`
 
 ## 2. 当前默认运行方式
 
@@ -41,8 +42,8 @@ python scripts/personal_pc_client.py --instance-id personal_pc_real-b6553a2f --g
 - 聊天面板本地规则问答
 - 聊天面板本地 `Ollama` 问答
 - GitHub 状态摘要静态页本地构建
-- GitHub Projects 文档同步 dry-run
-- GitHub Projects 里程碑同步 dry-run
+- GitHub Projects 文档同步与看板更新
+- GitHub Projects 路线图清理与 `Done` 收口
 
 ## 4. 当前关键入口文件
 
@@ -71,10 +72,10 @@ python scripts/personal_pc_client.py --instance-id personal_pc_real-b6553a2f --g
 
 当前更适合继续推进的是：
 
-1. 真实模型模式真正联通可用账号并验证稳定性
-2. 继续收敛 Tool / Skill 两套入口，让聊天主流程统一走 Skill adapter
-3. 评估 MQTT 作为共享 HTTP 网关的补充方案
-4. 继续完善 backend manager，例如 PID/健康检查/启动脚本
+1. 完善个人 PC 客户端 release 交付，支持 Python 脚本和 EXE 两种方式
+2. 新增手机端客户端与 mobile device 模板，形成第二类移动端真实设备
+3. 继续把 GitHub 文档与 Projects 保持为协作入口，便于多人接力开发
+4. 真实模型、Tool / Skill 收敛和 MQTT 评估转入下一轮候选
 
 ## 7. 当前不建议优先动的部分
 

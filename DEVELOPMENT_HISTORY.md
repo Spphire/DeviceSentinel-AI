@@ -4,7 +4,7 @@
 
 项目名称：基于 MPC Skill 的电气设备状态监测 AI Agent 系统  
 当前定位：学生级课程设计 / 毕业设计演示系统  
-当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调，以及 GitHub 协作文档整理
+当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调，以及 GitHub 协作文档与 Projects 看板整理
 
 ## 当前能力
 
@@ -197,16 +197,27 @@
 - 可将根目录 `DEVELOPMENT_HISTORY.md` 中的阶段历史同步成 `Milestone · 第X阶段` 卡片
 - 里程碑卡默认映射到 Projects 的 `Done` 列，适合给面试官展示项目演进过程
 
+### 2026-03-17 第十八阶段
+
+- 收工前统一整理 `doc/current-status.md`、`doc/active-plan.md`、`doc/dev-log.md` 和根目录 `DEVELOPMENT_HISTORY.md`
+- 清理 GitHub Projects 路线图中无意义的 milestone 卡片
+- 将当前阶段节点统一标记为 `Done`
+- 将下一轮优先事项收敛为：
+  - 个人 PC 客户端 release 形态完善（Python / EXE）
+  - 手机端客户端与 mobile device 模板
+
 ### 2026-03-16 当前待继续工作（含优先级）
 
-- `P2` 评估是否为真实设备接入增加 `MQTT` 模式，与当前 `HTTP JSON push` 并存；重点比较单机演示复杂度、多设备扩展性、跨主机部署和断线重连体验
-- `P2` 进一步细化 backend manager，例如补充 PID 文件、健康检查和启动脚本，减少手动运维操作
-- `P2` 让聊天主流程进一步统一走 `dashboard_skill_adapter`，收敛 Tool / Skill 两套入口，便于后续真正挂接外部 MPC Skill
+- `P2` 完善个人 PC 客户端 release 形态，支持 Python 脚本与 EXE 两种交付方式
+- `P2` 新增手机端真实设备模板与客户端，形成第二类移动端真实设备
 - `P2` 真正联通可用的真实模型账号与 API Key，验证页面里的 `real_llm` 模式
+- `P2` 让聊天主流程进一步统一走 `dashboard_skill_adapter`，收敛 Tool / Skill 两套入口，便于后续真正挂接外部 MPC Skill
+- `P2` 进一步细化 backend manager，例如补充 PID 文件、健康检查和启动脚本，减少手动运维操作
+- `P2` 评估是否为真实设备接入增加 `MQTT` 模式，与当前 `HTTP JSON push` 并存；重点比较单机演示复杂度、多设备扩展性、跨主机部署和断线重连体验
 - `P2` 继续优化本地 Ollama / 真实模型提示词，减少无效调用
-- `P2` 让真实模型进一步利用对话历史，提升多轮追问体验
 - `P2` 继续扩展 Dashboard Tool / MPC Skill，补充更多筛选和聚合查询能力
-- `P3` 如有需要，再细化设置弹窗的交互体验和提示文案
+- `P3` 继续优化答辩版页面视觉与数据展示
+- `P3` 视情况推进数据持久化升级
 
 ## 当前运行方式
 
@@ -252,10 +263,10 @@ python -m pytest
 
 ```text
 项目现在的实际工作目录是 C:\Users\Apricity\Desktop\DeviceSentinel-AI，不再以旧目录 SGCC_ElecDevice_Monitor_AI_MPC 为准。
-项目是“基于 MPC Skill 的电气设备状态监测 AI Agent 系统”，当前已经做成模板驱动版本，并且聊天区已经支持 local_rule / real_llm 双后端。
+项目是“基于 MPC Skill 的电气设备状态监测 AI Agent 系统”，当前已经做成模板驱动版本，并且聊天区已经支持 local_rule / real_llm / local_ollama 三种后端。
 根目录 DEVELOPMENT_HISTORY.md 记录了当前架构、开发历史和下一步计划。
 页面入口是 streamlit_app.py，模板目录是 device_templates，设置持久化在 storage/dashboard_settings.json。
-当前重点是继续把真实模型模式调稳，并扩展已整理好的设备查询 Tool / MPC Skill 接口。
+当前重点是继续完善个人 PC 客户端 release 交付形态，并新增手机端真实设备模板与客户端。
 本机现已部署 Ollama 和 qwen2.5:7b，页面聊天区可切到 local_ollama 模式直接使用。
 ```
 
@@ -265,5 +276,6 @@ python -m pytest
 - 不要再以旧目录 `C:\Users\Apricity\Desktop\SGCC_ElecDevice_Monitor_AI_MPC` 作为工作区
 - 当前 GitHub 仓库为：`git@github.com:Spphire/DeviceSentinel-AI.git`
 - 当前最新已推送提交：
-  - `fcdafb4` `Add local dashboard agent chat experience`
-  - `a053da9` `Refine dashboard settings and add project docs`
+  - `b4e688a` `Add milestone sync for GitHub Projects`
+  - `94453a3` `Add GitHub Projects sync for collaboration docs`
+  - `39ebfb4` `Add collaboration status and planning docs`

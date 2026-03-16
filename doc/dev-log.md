@@ -5,6 +5,14 @@
 
 ## 2026-03-17
 
+### 收工整理与明日计划
+
+- 统一整理 `doc/current-status.md`、`doc/active-plan.md`、`doc/dev-log.md` 和根目录 `DEVELOPMENT_HISTORY.md`
+- 清理 GitHub Projects 路线图中无意义的 milestone 卡片，并将当前阶段节点统一标记为 `Done`
+- 将明日优先事项收敛为两条：
+  - 个人 PC 客户端 release 形态完善，支持 Python 脚本和 EXE
+  - 手机端客户端与 mobile device 模板
+
 ### GitHub Projects 协作文档同步
 
 - 新增 `scripts/sync_github_projects.py`，可将 `current-status / active-plan / dev-log` 汇总后同步到 GitHub Projects v2
