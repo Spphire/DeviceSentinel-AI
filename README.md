@@ -32,6 +32,9 @@
 | [`doc/project-architecture.md`](doc/project-architecture.md) | 项目架构说明与上下文背景 |
 | [`doc/completed-features.md`](doc/completed-features.md) | 已完成功能清单 |
 | [`doc/deployment-guide.md`](doc/deployment-guide.md) | 部署与使用说明 |
+| [`doc/current-status.md`](doc/current-status.md) | 协作 coder 入口：当前阶段、默认运行方式、关键约束 |
+| [`doc/active-plan.md`](doc/active-plan.md) | 协作 coder 入口：当前优先事项和下一步计划 |
+| [`doc/dev-log.md`](doc/dev-log.md) | 近期开发日志与关键决策摘要 |
 | [`doc/development-history.md`](doc/development-history.md) | GitHub 展示版开发历史 |
 | [`doc/roadmap.md`](doc/roadmap.md) | 下一阶段规划 |
 | [`doc/github-publishing-guide.md`](doc/github-publishing-guide.md) | GitHub 仓库发布与展示建议 |

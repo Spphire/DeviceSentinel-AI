@@ -41,6 +41,7 @@ state-monitoring
 
 - 首页看 `README.md`
 - 重点阅读 `doc/README.md`
+- 协作开发先看 `doc/current-status.md`、`doc/active-plan.md`、`doc/dev-log.md`
 - 技术专项看 `docs/mpc_skill_guide.md`
 
 ### Issues 页
