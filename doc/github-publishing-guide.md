@@ -79,7 +79,77 @@ state-monitoring
 - Releases：保存答辩版演示快照
 - Wiki：如果后续文档继续膨胀，可以把长期文档迁移到 Wiki
 
-## 6. 首次推送建议流程
+## 6. 自动同步状态页与摘要看板
+
+当前仓库已经补上了一套“本地状态 -> GitHub Actions -> GitHub Pages”的自动发布骨架：
+
+- 工作流：`.github/workflows/publish-status.yml`
+- 本地构建脚本：`scripts/build_status_site.py`
+- 本地推送脚本：`scripts/publish_status_snapshot.py`
+
+### 6.1 这套链路适合做什么
+
+- 自动同步设备状态摘要
+- 自动发布一个公开可访问的静态状态页
+- 自动保存最近一次状态快照 artifact
+
+### 6.2 这套链路不适合做什么
+
+- 不适合长期存储高频原始日志
+- 不适合秒级实时遥测看板
+
+更适合放到 GitHub 的是“摘要、最近状态、异常列表、结构化快照”，而不是连续刷新的完整遥测流。
+
+### 6.3 首次启用方式
+
+1. 在 GitHub 仓库设置中启用 Pages，并将构建来源切到 GitHub Actions
+2. 准备一个可触发仓库 `repository_dispatch` 的 Token
+3. 在本机设置环境变量：
+
+```bash
+set GITHUB_STATUS_TOKEN=<你的 GitHub Token>
+```
+
+4. 本地触发一次状态发布：
+
+```bash
+python scripts/publish_status_snapshot.py --owner Spphire --repo DeviceSentinel-AI
+```
+
+5. 等待 Actions 跑完后，即可在 GitHub Pages 页面查看状态页
+
+### 6.4 只在本地预览状态页
+
+如果你只是想先看静态页长什么样，可以本地执行：
+
+```bash
+python scripts/build_status_site.py --output-dir site
+```
+
+生成结果：
+
+- `site/index.html`
+- `site/status.json`
+
+### 6.5 如何持续自动同步
+
+最推荐的方式不是让 GitHub 定时来“拉”你的本地状态，而是让你本地机器定时“推”：
+
+- Windows：任务计划程序定时执行 `python scripts/publish_status_snapshot.py --owner Spphire --repo DeviceSentinel-AI`
+- Linux / macOS：使用 `cron`
+
+这样 GitHub Pages 展示的就是你本机当前真实状态，而不是远端仓库在无本地数据时生成的空快照。
+
+### 6.6 如果要同步 GitHub Projects 看板
+
+建议后续单独做一个自动化脚本：
+
+- 当异常设备数 > 0 时自动创建 / 更新 Issue
+- 或者调用 GitHub Projects v2 API 更新看板列和状态字段
+
+状态页适合展示摘要，看板适合跟踪处理流转；两者最好分开。
+
+## 7. 首次推送建议流程
 
 1. 在 GitHub 网页端创建一个空仓库
 2. 将本地仓库绑定为远程 `origin`

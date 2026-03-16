@@ -79,6 +79,12 @@ set OPENAI_API_KEY=<你的 API Key>
 
 如需启用本地 7B 模型聊天模式，可安装 `Ollama` 并拉取 `qwen2.5:7b`，然后在页面设置中把对话后端切到 `local_ollama`。
 
+如需把当前监测摘要自动同步到 GitHub Pages，可运行：
+
+```bash
+python scripts/publish_status_snapshot.py --owner Spphire --repo DeviceSentinel-AI
+```
+
 启动页面：
 
 ```bash

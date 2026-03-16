@@ -19,7 +19,7 @@
 | [`deployment-guide.md`](deployment-guide.md) | 页面、网关、客户端、本地配置的使用说明 |
 | [`development-history.md`](development-history.md) | GitHub 展示版开发历史和阶段里程碑 |
 | [`roadmap.md`](roadmap.md) | 下一阶段功能规划与建议方向 |
-| [`github-publishing-guide.md`](github-publishing-guide.md) | GitHub 仓库展示与协作配置建议 |
+| [`github-publishing-guide.md`](github-publishing-guide.md) | GitHub 仓库展示、GitHub Pages 状态页和 repository_dispatch / Actions 自动发布说明 |
 
 ## 相关补充文档
 
