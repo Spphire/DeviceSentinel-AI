@@ -1,0 +1,26 @@
+{
+  "template_id": "personal_pc_real",
+  "display_name": "个人 PC（真实设备）",
+  "category_name": "个人电脑",
+  "source_type": "real",
+  "metrics": [
+    { "metric_id": "cpu_usage", "label": "CPU 使用率", "unit": "%", "precision": 1 },
+    { "metric_id": "memory_usage", "label": "内存使用率", "unit": "%", "precision": 1 },
+    { "metric_id": "disk_usage", "label": "磁盘使用率", "unit": "%", "precision": 1 }
+  ],
+  "communication": {
+    "protocols": [
+      { "id": "http_json", "label": "HTTP JSON 推送", "default_host": "127.0.0.1", "default_port": 10570, "default_path": "/telemetry" }
+    ],
+    "offline_timeout_seconds": 20
+  },
+  "analysis": {
+    "kind": "threshold",
+    "summary_normal": "PC 运行指标整体平稳，当前未发现明显资源拥塞风险。",
+    "metric_rules": {
+      "cpu_usage": { "label": "CPU 使用率", "high": 85, "severity": "medium", "suggestion": "建议检查后台高占用进程与任务调度情况。" },
+      "memory_usage": { "label": "内存使用率", "high": 90, "severity": "medium", "suggestion": "建议检查内存占用异常的应用程序或服务。" },
+      "disk_usage": { "label": "磁盘使用率", "high": 92, "severity": "high", "suggestion": "建议清理磁盘空间并核查日志或缓存暴涨情况。" }
+    }
+  }
+}

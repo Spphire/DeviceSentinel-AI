@@ -1,0 +1,24 @@
+{
+  "template_id": "temp_humidity_real",
+  "display_name": "温湿度真实设备",
+  "category_name": "温湿度传感器",
+  "source_type": "real",
+  "metrics": [
+    { "metric_id": "temperature", "label": "温度", "unit": "℃", "precision": 1 },
+    { "metric_id": "humidity", "label": "湿度", "unit": "%", "precision": 1 }
+  ],
+  "communication": {
+    "protocols": [
+      { "id": "http_json", "label": "HTTP JSON 推送", "default_host": "127.0.0.1", "default_port": 10570, "default_path": "/telemetry" }
+    ],
+    "offline_timeout_seconds": 20
+  },
+  "analysis": {
+    "kind": "threshold",
+    "summary_normal": "温湿度监测值处于正常区间，环境状态总体平稳。",
+    "metric_rules": {
+      "temperature": { "label": "温度", "high": 30, "low": 5, "severity": "medium", "suggestion": "建议检查环境温控条件与通风情况。" },
+      "humidity": { "label": "湿度", "high": 80, "low": 20, "severity": "medium", "suggestion": "建议检查除湿或加湿设备工作状态。" }
+    }
+  }
+}

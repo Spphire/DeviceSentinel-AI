@@ -1,0 +1,23 @@
+{
+  "template_id": "sgcc_simulated",
+  "display_name": "SGCC 模拟设备",
+  "category_name": "SGCC 配电设备",
+  "source_type": "simulated",
+  "metrics": [
+    { "metric_id": "temperature", "label": "温度", "unit": "℃", "precision": 1 },
+    { "metric_id": "voltage", "label": "电压", "unit": "V", "precision": 1 },
+    { "metric_id": "current", "label": "电流", "unit": "A", "precision": 1 }
+  ],
+  "simulation": {
+    "kind": "sgcc",
+    "profile_options": [
+      { "id": "stable", "label": "稳定型" },
+      { "id": "intermittent_fault", "label": "偶发故障型" },
+      { "id": "frequent_fault", "label": "频发故障型" },
+      { "id": "offline", "label": "离线型" }
+    ]
+  },
+  "analysis": {
+    "kind": "sgcc"
+  }
+}

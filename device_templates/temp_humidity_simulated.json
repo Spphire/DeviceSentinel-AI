@@ -1,0 +1,27 @@
+{
+  "template_id": "temp_humidity_simulated",
+  "display_name": "温湿度模拟设备",
+  "category_name": "温湿度传感器",
+  "source_type": "simulated",
+  "metrics": [
+    { "metric_id": "temperature", "label": "温度", "unit": "℃", "precision": 1 },
+    { "metric_id": "humidity", "label": "湿度", "unit": "%", "precision": 1 }
+  ],
+  "simulation": {
+    "kind": "temperature_humidity",
+    "profile_options": [
+      { "id": "stable", "label": "稳定环境" },
+      { "id": "intermittent_fault", "label": "偶发异常" },
+      { "id": "frequent_fault", "label": "频发异常" },
+      { "id": "offline", "label": "离线型" }
+    ]
+  },
+  "analysis": {
+    "kind": "threshold",
+    "summary_normal": "温湿度监测值处于正常区间，环境状态总体平稳。",
+    "metric_rules": {
+      "temperature": { "label": "温度", "high": 30, "low": 5, "severity": "medium", "suggestion": "建议检查环境温控条件与通风情况。" },
+      "humidity": { "label": "湿度", "high": 80, "low": 20, "severity": "medium", "suggestion": "建议检查除湿或加湿设备工作状态。" }
+    }
+  }
+}
