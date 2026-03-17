@@ -12,7 +12,8 @@
 6. [`dev-log.md`](dev-log.md)
 7. [`development-history.md`](development-history.md)
 8. [`github-projects-guide.md`](github-projects-guide.md)
-9. [`roadmap.md`](roadmap.md)
+9. [`optimization-qa.md`](optimization-qa.md)
+10. [`roadmap.md`](roadmap.md)
 
 ## 文档说明
 
@@ -26,6 +27,7 @@
 | [`dev-log.md`](dev-log.md) | 面向 GitHub 协作阅读的近期开发日志 |
 | [`development-history.md`](development-history.md) | GitHub 展示版开发历史和阶段里程碑 |
 | [`github-projects-guide.md`](github-projects-guide.md) | 将协作文档同步到 GitHub Projects v2 看板的说明 |
+| [`optimization-qa.md`](optimization-qa.md) | 站在产品 / 架构 / 答辩视角做的一轮自问自答式优化建议 |
 | [`roadmap.md`](roadmap.md) | 下一阶段功能规划与建议方向 |
 | [`github-publishing-guide.md`](github-publishing-guide.md) | GitHub 仓库展示、GitHub Pages 状态页和 repository_dispatch / Actions 自动发布说明 |
 

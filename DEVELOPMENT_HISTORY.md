@@ -238,6 +238,14 @@
 - 本机实测完成 Android debug APK 构建：
   - `dist/clients/mobile_android/device_sentinel_mobile_client-debug.apk`
 
+### 2026-03-17 第二十一阶段
+
+- 重新整理 `doc/README.md` 与 `README.md` 中的文档导航
+- 新增 `doc/optimization-qa.md`
+- 将“后续还能怎么优化”从即时讨论沉淀成可复用的自问自答文档
+- 补充了产品、架构、AI、客户端、答辩展示等方向的持续优化判断依据
+- 继续将文档和 GitHub Projects 保持同步，降低后续接手成本
+
 ### 2026-03-17 当前待继续工作（含优先级）
 
 - `P2` 真正联通可用的真实模型账号与 API Key，验证页面里的 `real_llm` 模式
