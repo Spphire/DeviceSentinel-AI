@@ -4,7 +4,7 @@
 
 项目名称：基于 MPC Skill 的电气设备状态监测 AI Agent 系统  
 当前定位：学生级课程设计 / 毕业设计演示系统  
-当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调，以及 GitHub 协作文档与 Projects 看板整理
+当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调、PC GUI / Windows EXE / Android APK 客户端交付，以及 GitHub 协作文档与 Projects 看板整理
 
 ## 当前能力
 
@@ -12,6 +12,7 @@
 - 支持的模板：
   - `sgcc_simulated`：SGCC 模拟设备
   - `personal_pc_real`：个人 PC 真实设备
+  - `mobile_device_real`：手机真实设备
   - `temp_humidity_simulated`：温湿度模拟设备
   - `temp_humidity_real`：温湿度真实设备
 - Streamlit 主页面支持：
@@ -33,8 +34,13 @@
   - 默认接收地址 `http://127.0.0.1:10570/telemetry`
   - 多个真实设备共用同一个 `/telemetry` 入口，通过 `instance_id` 区分
 - 已有真实设备客户端脚本：
+  - [personal_pc_client_app.py](scripts/personal_pc_client_app.py)
   - [personal_pc_client.py](scripts/personal_pc_client.py)
+  - [mobile_device_client.py](scripts/mobile_device_client.py)
   - [temp_humidity_client.py](scripts/temp_humidity_client.py)
+- 已支持 Android 客户端工程与 APK 构建：
+  - [android/mobile-client](android/mobile-client)
+  - [build_mobile_android_apk.py](scripts/build_mobile_android_apk.py)
 
 ## 当前架构
 
@@ -206,10 +212,34 @@
   - 个人 PC 客户端 release 形态完善（Python / EXE）
   - 手机端客户端与 mobile device 模板
 
-### 2026-03-16 当前待继续工作（含优先级）
+### 2026-03-17 第十九阶段
 
-- `P2` 完善个人 PC 客户端 release 形态，支持 Python 脚本与 EXE 两种交付方式
-- `P2` 新增手机端真实设备模板与客户端，形成第二类移动端真实设备
+- 为多个真实设备脚本抽出共享上报辅助层 `app/services/telemetry_client.py`
+- 新增 `scripts/build_client_release.py` 与 `requirements-release.txt`
+- 实测完成 `personal_pc_client.exe` 打包输出
+- 新增 `mobile_device_real` 模板和 `scripts/mobile_device_client.py`
+- 手机端客户端已支持：
+  - Android / Termux 实机采集
+  - 手动指标覆写
+  - `--simulate` 桌面演示模式
+
+### 2026-03-17 第二十阶段
+
+- 将个人 PC 客户端补成桌面 GUI 应用：
+  - 默认打开图形界面
+  - 支持填写仪表盘 IP / 端口 / 路径 / 上报间隔
+  - 支持资源曲线与当前指标展示
+  - 支持 `--headless` 无界面运行
+- 将个人 PC GUI 配置自动缓存到 `%APPDATA%\DeviceSentinel\personal_pc_client_app.json`
+- 修复 GUI 端重新开始上报后旧间隔未及时退出的问题
+- 修复 Windows 子进程采样时黑色终端窗口频繁闪烁的问题
+- 新增原生 Android 客户端工程 `android/mobile-client`
+- 新增 `scripts/build_mobile_android_apk.py`
+- 本机实测完成 Android debug APK 构建：
+  - `dist/clients/mobile_android/device_sentinel_mobile_client-debug.apk`
+
+### 2026-03-17 当前待继续工作（含优先级）
+
 - `P2` 真正联通可用的真实模型账号与 API Key，验证页面里的 `real_llm` 模式
 - `P2` 让聊天主流程进一步统一走 `dashboard_skill_adapter`，收敛 Tool / Skill 两套入口，便于后续真正挂接外部 MPC Skill
 - `P2` 进一步细化 backend manager，例如补充 PID 文件、健康检查和启动脚本，减少手动运维操作
@@ -242,7 +272,7 @@ python scripts/run_backend.py
 发送个人 PC 指标：
 
 ```bash
-python scripts/personal_pc_client.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry
+python scripts/personal_pc_client_app.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry
 ```
 
 发送温湿度指标：
@@ -266,7 +296,7 @@ python -m pytest
 项目是“基于 MPC Skill 的电气设备状态监测 AI Agent 系统”，当前已经做成模板驱动版本，并且聊天区已经支持 local_rule / real_llm / local_ollama 三种后端。
 根目录 DEVELOPMENT_HISTORY.md 记录了当前架构、开发历史和下一步计划。
 页面入口是 streamlit_app.py，模板目录是 device_templates，设置持久化在 storage/dashboard_settings.json。
-当前重点是继续完善个人 PC 客户端 release 交付形态，并新增手机端真实设备模板与客户端。
+当前重点是继续推进真实模型联调、Tool / Skill 收敛，以及 backend manager 健康检查能力。
 本机现已部署 Ollama 和 qwen2.5:7b，页面聊天区可切到 local_ollama 模式直接使用。
 ```
 
@@ -276,6 +306,6 @@ python -m pytest
 - 不要再以旧目录 `C:\Users\Apricity\Desktop\SGCC_ElecDevice_Monitor_AI_MPC` 作为工作区
 - 当前 GitHub 仓库为：`git@github.com:Spphire/DeviceSentinel-AI.git`
 - 当前最新已推送提交：
+  - `9e6dfd5` `Sync end-of-day docs and next-step plan`
   - `b4e688a` `Add milestone sync for GitHub Projects`
   - `94453a3` `Add GitHub Projects sync for collaboration docs`
-  - `39ebfb4` `Add collaboration status and planning docs`

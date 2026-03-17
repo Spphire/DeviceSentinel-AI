@@ -466,6 +466,32 @@ mutation ($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
         data = response.json()
         _raise_graphql_errors(data)
 
+    def delete_project_item(self, project_id: str, item_id: str) -> None:
+        query = """
+mutation ($projectId: ID!, $itemId: ID!) {
+  deleteProjectV2Item(input: {
+    projectId: $projectId,
+    itemId: $itemId
+  }) {
+    deletedItemId
+  }
+}
+"""
+        response = self.session.post(
+            self.api_url,
+            json={
+                "query": query,
+                "variables": {
+                    "projectId": project_id,
+                    "itemId": item_id,
+                },
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+        _raise_graphql_errors(data)
+
     def sync_drafts(self, drafts: list[SyncDraft]) -> dict[str, Any]:
         metadata = self.load_project_metadata()
         summary = {
@@ -473,12 +499,20 @@ mutation ($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
             "created": [],
             "updated": [],
             "field_updates": [],
+            "deleted": [],
             "warnings": [],
         }
 
         existing_drafts = dict(metadata.drafts)
+        desired_sync_keys = {draft.sync_key for draft in drafts}
+        retained_item_ids: set[str] = set()
         for draft in drafts:
-            existing = existing_drafts.get(draft.sync_key)
+            existing = _find_existing_draft_for_sync(
+                existing_drafts=existing_drafts,
+                sync_key=draft.sync_key,
+                title=draft.title,
+                retained_item_ids=retained_item_ids,
+            )
             if existing is None:
                 existing = self.create_draft_issue(metadata.project_id, draft)
                 existing_drafts[draft.sync_key] = existing
@@ -489,6 +523,8 @@ mutation ($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
                     existing = self.update_draft_issue(existing, draft)
                     existing_drafts[draft.sync_key] = existing
                     summary["updated"].append(draft.title)
+                existing_drafts[draft.sync_key] = existing
+            retained_item_ids.add(existing.item_id)
 
             for field_name, desired_option_name in [
                 (self.status_field_name, draft.status_name),
@@ -504,6 +540,14 @@ mutation ($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
                     continue
                 self.update_single_select_field(metadata.project_id, existing.item_id, option)
                 summary["field_updates"].append(f"{draft.title}: {field_name} -> {desired_option_name}")
+
+        for sync_key, existing in metadata.drafts.items():
+            if sync_key in desired_sync_keys:
+                continue
+            if existing.item_id in retained_item_ids:
+                continue
+            self.delete_project_item(metadata.project_id, existing.item_id)
+            summary["deleted"].append(existing.title)
         return summary
 
 
@@ -588,6 +632,27 @@ def _parse_existing_drafts(nodes: list[dict[str, Any]]) -> dict[str, ExistingDra
             sync_key=sync_key,
         )
     return drafts
+
+
+def _find_existing_draft_for_sync(
+    *,
+    existing_drafts: dict[str, ExistingDraft],
+    sync_key: str,
+    title: str,
+    retained_item_ids: set[str],
+) -> ExistingDraft | None:
+    by_key = existing_drafts.get(sync_key)
+    if by_key is not None and by_key.item_id not in retained_item_ids:
+        return by_key
+
+    title_matches = [
+        draft
+        for draft in existing_drafts.values()
+        if draft.title == title and draft.item_id not in retained_item_ids
+    ]
+    if len(title_matches) == 1:
+        return title_matches[0]
+    return None
 
 
 def _extract_named_section(markdown: str, section_name: str) -> str:

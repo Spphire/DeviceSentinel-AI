@@ -8,10 +8,17 @@ def test_load_device_templates_reads_expected_templates():
     templates = load_device_templates()
 
     assert "sgcc_simulated" in templates
+    assert "mobile_device_real" in templates
     assert "personal_pc_real" in templates
     assert "temp_humidity_simulated" in templates
     assert templates["sgcc_simulated"].source_type == "simulated"
     assert len(templates["temp_humidity_simulated"].metrics) == 2
+    assert [metric.metric_id for metric in templates["mobile_device_real"].metrics] == [
+        "battery_level",
+        "battery_temperature",
+        "memory_usage",
+        "storage_usage",
+    ]
     assert [metric.metric_id for metric in templates["personal_pc_real"].metrics] == [
         "cpu_usage",
         "memory_usage",

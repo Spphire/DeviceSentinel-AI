@@ -301,7 +301,15 @@ def _build_client_command(device_payload: dict, template, gateway_summary: dict)
     client_target = gateway_summary["client_target"]
     if template.template_id == "personal_pc_real":
         return (
-            "python scripts/personal_pc_client.py "
+            "python scripts/personal_pc_client_app.py "
+            f"--instance-id {device_payload['instance_id']} "
+            f"--gateway-host {client_target['host']} "
+            f"--gateway-port {client_target['port']} "
+            f"--gateway-path {client_target['path']}"
+        )
+    if template.template_id == "mobile_device_real":
+        return (
+            "python scripts/mobile_device_client.py "
             f"--instance-id {device_payload['instance_id']} "
             f"--gateway-host {client_target['host']} "
             f"--gateway-port {client_target['port']} "
@@ -502,6 +510,10 @@ def _render_settings_dialog() -> None:
                     if client_preview:
                         st.caption("客户端示例命令")
                         st.code(client_preview, language="bash")
+                        if selected_template.template_id == "personal_pc_real":
+                            st.caption("个人 PC 客户端默认会打开图形界面；如果需要后台无人值守运行，可在命令末尾追加 `--headless`。")
+                        if selected_template.template_id == "mobile_device_real":
+                            st.caption("安卓 / Termux 实机上报可直接运行；如果先在桌面演示手机设备，可在命令末尾追加 `--simulate`。")
     else:
         st.info("当前为正式展示模式。设备清单和开发者级网关配置已隐藏，保留基础系统设置。")
 

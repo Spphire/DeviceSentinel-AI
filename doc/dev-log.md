@@ -5,6 +5,18 @@
 
 ## 2026-03-17
 
+### PC GUI 客户端与 Android APK 收口
+
+- 个人 PC 客户端补成了真正面向 C 端的桌面程序：
+  - 默认启动 GUI
+  - 支持修改仪表盘 IP / 端口 / 路径 / 上报间隔
+  - 支持本地缓存配置
+  - 支持 `--headless` 无界面运行
+- 修复了 GUI 端“改完上报间隔后重新开始仍沿用旧频率”的问题
+- 修复了 Windows 上采样子进程导致黑色终端窗口频繁闪烁的问题
+- 新增原生 Android 客户端工程 `android/mobile-client`
+- 实测完成 `python scripts/build_mobile_android_apk.py`，已输出 debug APK
+
 ### 收工整理与明日计划
 
 - 统一整理 `doc/current-status.md`、`doc/active-plan.md`、`doc/dev-log.md` 和根目录 `DEVELOPMENT_HISTORY.md`
@@ -12,6 +24,17 @@
 - 将明日优先事项收敛为两条：
   - 个人 PC 客户端 release 形态完善，支持 Python 脚本和 EXE
   - 手机端客户端与 mobile device 模板
+
+### 客户端 release 与手机端接入
+
+- 为多个真实设备脚本抽出共享上报辅助层 `app/services/telemetry_client.py`
+- 新增 `scripts/build_client_release.py` 和 `requirements-release.txt`
+- 实测完成 `personal_pc_client.exe` 打包输出
+- 新增 `mobile_device_real` 模板和 `scripts/mobile_device_client.py`
+- 手机端客户端支持三种模式：
+  - Android / Termux 实机采集
+  - 手动指标覆写
+  - `--simulate` 桌面演示模式
 
 ### GitHub Projects 协作文档同步
 

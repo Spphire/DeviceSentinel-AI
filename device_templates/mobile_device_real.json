@@ -1,0 +1,28 @@
+{
+  "template_id": "mobile_device_real",
+  "display_name": "手机（真实设备）",
+  "category_name": "移动终端",
+  "source_type": "real",
+  "metrics": [
+    { "metric_id": "battery_level", "label": "电量", "unit": "%", "precision": 1 },
+    { "metric_id": "battery_temperature", "label": "电池温度", "unit": "℃", "precision": 1 },
+    { "metric_id": "memory_usage", "label": "内存使用率", "unit": "%", "precision": 1 },
+    { "metric_id": "storage_usage", "label": "存储使用率", "unit": "%", "precision": 1 }
+  ],
+  "communication": {
+    "protocols": [
+      { "id": "http_json", "label": "HTTP JSON 推送", "default_host": "127.0.0.1", "default_port": 10570, "default_path": "/telemetry" }
+    ],
+    "offline_timeout_seconds": 30
+  },
+  "analysis": {
+    "kind": "threshold",
+    "summary_normal": "手机端当前运行平稳，电量、温度和资源占用均处于正常范围内。",
+    "metric_rules": {
+      "battery_level": { "label": "电量", "low": 20, "severity": "high", "suggestion": "建议及时充电，避免设备进入低电量保护或后台采集被系统中断。" },
+      "battery_temperature": { "label": "电池温度", "high": 42, "severity": "medium", "suggestion": "建议检查持续推理、游戏、高亮度或充电状态是否导致设备过热。" },
+      "memory_usage": { "label": "内存使用率", "high": 90, "severity": "medium", "suggestion": "建议检查常驻应用、后台采集服务或前台重负载任务的内存占用。" },
+      "storage_usage": { "label": "存储使用率", "high": 90, "severity": "medium", "suggestion": "建议清理缓存、日志和大文件，避免影响采集客户端持续运行。" }
+    }
+  }
+}

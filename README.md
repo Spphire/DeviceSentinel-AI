@@ -6,7 +6,7 @@
 - 本地规则分析与 AI 风格总结
 - Streamlit 可视化面板
 - 本地持久化设置
-- 个人 PC 与温湿度真实设备客户端
+- 个人 PC、手机端与温湿度真实设备客户端
 - 面向后续 MPC Skill / 大模型接入的扩展接口
 
 ## 项目状态
@@ -16,11 +16,13 @@
 | 页面演示 | 已完成 |
 | SGCC 模拟设备 | 已完成 |
 | 个人 PC 真实设备 | 已完成 |
+| 手机端真实设备 | 已完成 |
 | 温湿度真实设备 | 已完成 |
 | 本地 AI 总结 | 已完成 |
 | 聊天式 AI 助手 | 已支持本地规则 / 本地 Ollama / 真实模型 |
 | 真实大模型接入 | 已支持后端适配 / 待配置 API Key |
 | MPC Skill 平台联调 | 已完成本地 Tool/Skill 适配层 |
+| 客户端 release 打包 | 已支持 PC 脚本 / GUI EXE 与 Android APK 构建 |
 
 ## 文档导航
 
@@ -63,7 +65,8 @@ flowchart LR
 | 模板 ID | 类型 | 数据来源 | 主要指标 |
 | --- | --- | --- | --- |
 | `sgcc_simulated` | SGCC 配电设备 | 模拟 | 温度 / 电压 / 电流 |
-| `personal_pc_real` | 个人 PC | 真实设备 | CPU / 内存 / 磁盘活动率 / GPU |
+| `personal_pc_real` | 个人 PC | 真实设备 | CPU / 内存 / 磁盘活动率 / GPU / GPU 显存 |
+| `mobile_device_real` | 手机 | 真实设备 | 电量 / 电池温度 / 内存 / 存储 |
 | `temp_humidity_simulated` | 温湿度设备 | 模拟 | 温度 / 湿度 |
 | `temp_humidity_real` | 温湿度设备 | 真实设备 | 温度 / 湿度 |
 
@@ -101,10 +104,41 @@ streamlit run streamlit_app.py --server.port 7787
 python scripts/run_backend.py
 ```
 
-启动个人 PC 客户端：
+启动个人 PC 客户端（默认打开 GUI）：
 
 ```bash
-python scripts/personal_pc_client.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry
+python scripts/personal_pc_client_app.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry
+```
+
+如需后台无人值守运行，可追加 `--headless`：
+
+```bash
+python scripts/personal_pc_client_app.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry --headless
+```
+
+启动手机端脚本客户端：
+
+```bash
+python scripts/mobile_device_client.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry --simulate
+```
+
+构建 PC 客户端 release：
+
+```bash
+pip install -r requirements-release.txt
+python scripts/build_client_release.py --target personal_pc --format both
+```
+
+构建手机端 Android APK：
+
+```bash
+python scripts/build_mobile_android_apk.py
+```
+
+默认 APK 输出：
+
+```text
+dist/clients/mobile_android/device_sentinel_mobile_client-debug.apk
 ```
 
 运行测试：
@@ -117,6 +151,7 @@ python -m pytest
 
 ```text
 DeviceSentinel-AI/
+├─ android/
 ├─ app/
 ├─ device_templates/
 ├─ doc/

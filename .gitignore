@@ -1,6 +1,12 @@
 __pycache__/
 .pytest_cache/
 *.pyc
+.tools/
+dist/
+
+android/mobile-client/.gradle/
+android/mobile-client/app/build/
+android/mobile-client/local.properties
 
 storage/dashboard_settings.json
 storage/real_device_events.jsonl

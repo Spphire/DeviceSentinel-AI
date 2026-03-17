@@ -1,8 +1,10 @@
 import subprocess
+from types import SimpleNamespace
 
 from scripts.personal_pc_client import (
     _collect_nvidia_gpu_metrics,
     _parse_nvidia_smi_gpu_metrics,
+    _run_command,
     build_arg_parser,
     collect_metrics,
 )
@@ -70,6 +72,21 @@ def test_collect_metrics_prefers_nvidia_smi_gpu_usage(monkeypatch):
 
     assert metrics["gpu_usage"] == 92.0
     assert metrics["gpu_memory_usage"] == 75.0
+
+
+def test_run_command_uses_hidden_console_flag(monkeypatch):
+    captured: dict[str, int] = {}
+
+    def fake_run(*_args, **kwargs):
+        captured["creationflags"] = kwargs.get("creationflags", -1)
+        return SimpleNamespace(stdout="ok")
+
+    monkeypatch.setattr("scripts.personal_pc_client.subprocess.run", fake_run)
+
+    result = _run_command(["powershell", "-Command", "Write-Output ok"])
+
+    assert result == "ok"
+    assert captured["creationflags"] == getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def test_personal_pc_client_accepts_gateway_argument_names():

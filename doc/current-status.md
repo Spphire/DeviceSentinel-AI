@@ -4,12 +4,14 @@
 
 ## 1. 当前阶段
 
-项目当前已经完成到“第十八阶段”：
+项目当前已经完成到“第二十阶段”：
 
 - 模板驱动的混合设备监测面板已稳定可用
 - 聊天 Agent 已支持 `local_rule / real_llm / local_ollama`
 - 本机已完成 `Ollama + qwen2.5:7b` 联调
 - 真实设备接入已收敛为“共享 HTTP 网关 + backend manager”
+- 个人 PC 客户端已支持 GUI / headless、Windows EXE 与本地配置缓存
+- 手机端真实设备模板与脚本客户端已接入当前链路，Android APK 客户端工程已落地并可本机构建
 - GitHub 已补上状态摘要发布工作流，可自动发布静态状态页
 - GitHub Projects 文档同步脚本已落地，可把当前计划、上下文和阶段里程碑同步到 Projects v2 看板
 - GitHub Projects 当前已按收工状态整理，既有阶段节点已统一标记为 `Done`
@@ -31,19 +33,29 @@ python scripts/run_backend.py
 个人 PC 客户端：
 
 ```bash
-python scripts/personal_pc_client.py --instance-id personal_pc_real-b6553a2f --gateway-host 127.0.0.1 --gateway-port 10570 --gateway-path /telemetry
+python scripts/personal_pc_client_app.py --instance-id personal_pc_real-b6553a2f --gateway-host 127.0.0.1 --gateway-port 10570 --gateway-path /telemetry
+```
+
+移动端 APK 构建入口：
+
+```bash
+python scripts/build_mobile_android_apk.py
 ```
 
 ## 3. 当前已验证链路
 
 - 模拟设备总览、单设备详情、动态曲线
 - 真实个人 PC 指标采集与上报
+- 个人 PC GUI / headless 客户端配置缓存与重启生效
 - 共享网关配置修改后由 backend manager 自动重载
 - 聊天面板本地规则问答
 - 聊天面板本地 `Ollama` 问答
+- 手机端客户端模拟上报
+- Android 手机客户端 debug APK 本机构建
 - GitHub 状态摘要静态页本地构建
 - GitHub Projects 文档同步与看板更新
 - GitHub Projects 路线图清理与 `Done` 收口
+- 个人 PC Windows EXE 打包与输出目录生成
 
 ## 4. 当前关键入口文件
 
@@ -57,8 +69,13 @@ python scripts/personal_pc_client.py --instance-id personal_pc_real-b6553a2f --g
 | 聊天后端 | `app/agent/chat_agent.py` | `local_rule / real_llm / local_ollama` |
 | Tool 层 | `app/agent/dashboard_tools.py` | 设备查询与趋势分析工具 |
 | MPC Skill 适配 | `app/mpc/dashboard_skill_adapter.py` | Dashboard Tool 的 Skill 风格包装 |
+| 客户端共享层 | `app/services/telemetry_client.py` | 真实设备脚本共用的上报与参数解析 |
+| PC GUI 客户端 | `scripts/personal_pc_client_app.py` | 桌面 GUI、曲线展示与 headless 入口 |
+| Android 客户端工程 | `android/mobile-client` | 手机 APK 图形端与 Gradle wrapper |
+| Android APK 构建 | `scripts/build_mobile_android_apk.py` | 生成并复制 debug APK 到 `dist/clients/` |
 | 状态发布 | `scripts/publish_status_snapshot.py` | 向 GitHub 发送状态摘要 dispatch |
 | Projects 同步 | `scripts/sync_github_projects.py` | 将协作文档同步到 GitHub Projects v2 |
+| release 构建 | `scripts/build_client_release.py` | 输出脚本版与 Windows GUI EXE 客户端包 |
 
 ## 5. 当前默认配置
 
@@ -67,15 +84,16 @@ python scripts/personal_pc_client.py --instance-id personal_pc_real-b6553a2f --g
 - 共享网关默认：`127.0.0.1:10570/telemetry`
 - 真实设备区分方式：请求体中的 `instance_id`
 - 个人 PC 指标：`CPU / 内存 / 磁盘活动率 / GPU / GPU 显存占用率`
+- 手机端指标：`电量 / 电池温度 / 内存使用率 / 存储使用率`
 
 ## 6. 当前协作重点
 
 当前更适合继续推进的是：
 
-1. 完善个人 PC 客户端 release 交付，支持 Python 脚本和 EXE 两种方式
-2. 新增手机端客户端与 mobile device 模板，形成第二类移动端真实设备
-3. 继续把 GitHub 文档与 Projects 保持为协作入口，便于多人接力开发
-4. 真实模型、Tool / Skill 收敛和 MQTT 评估转入下一轮候选
+1. 真实模型模式真正联通可用账号并验证稳定性
+2. 继续收敛 Tool / Skill 两套入口，让聊天主流程统一走 Skill adapter
+3. 继续完善 backend manager，例如 PID/健康检查/启动脚本
+4. 在现有共享网关基础上评估 MQTT 补充接入
 
 ## 7. 当前不建议优先动的部分
 
