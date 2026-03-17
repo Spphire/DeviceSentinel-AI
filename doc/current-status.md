@@ -4,7 +4,7 @@
 
 ## 1. 当前阶段
 
-项目当前已经完成到“第二十三阶段”：
+项目当前已经完成到“第二十四阶段”：
 
 - 模板驱动的混合设备监测面板已稳定可用
 - 聊天 Agent 已支持 `local_rule / real_llm / local_ollama`
@@ -12,13 +12,14 @@
 - 真实设备接入已收敛为“共享 HTTP 网关 + backend manager”
 - backend manager 已补上健康检查、PID 状态识别和遗留状态文件自检
 - 聊天主流程已收敛到 `dashboard_skill_adapter`，本地规则与真实模型 Tool 调用共用同一套 Skill registry
-- 个人 PC 客户端已支持 GUI / headless、Windows EXE 与本地配置缓存
+- 个人 PC 客户端已支持 GUI / headless、Windows EXE、本地配置缓存、托盘与开机自启动
 - 个人 PC 客户端已补上自动重试、目标网关预览和更稳定的连接状态提示
 - 手机端真实设备模板与脚本客户端已接入当前链路，Android APK 客户端工程已落地并可本机构建
 - GitHub 已补上状态摘要发布工作流，可自动发布静态状态页
 - GitHub Projects 文档同步脚本已落地，可把当前计划、上下文和阶段里程碑同步到 Projects v2 看板
 - GitHub Projects 当前已按收工状态整理，既有阶段节点已统一标记为 `Done`
 - 已补充自问自答式优化文档，便于后续继续按产品 / 架构 / 展示价值排序推进
+- backend manager 已补上一键 `start / stop / restart / status` 管理脚本
 
 ## 2. 当前默认运行方式
 
@@ -31,7 +32,7 @@ streamlit run streamlit_app.py --server.port 7787
 共享后端管理主程序：
 
 ```bash
-python scripts/run_backend.py
+python scripts/manage_backend.py start
 ```
 
 聊天后端 smoke test：
@@ -61,6 +62,7 @@ python scripts/build_mobile_android_apk.py
 - backend manager 健康探针、状态文件写入与页面可见性
 - 聊天主流程 Skill adapter 收敛
 - `check_agent_backends.py` 命令行 smoke test
+- `manage_backend.py` 一键启动 / 停止 / 状态查看
 - 聊天面板本地规则问答
 - 聊天面板本地 `Ollama` 问答
 - 手机端客户端模拟上报
@@ -79,6 +81,7 @@ python scripts/build_mobile_android_apk.py
 | 设置存储 | `app/services/settings_store.py` | 页面设置与网关配置持久化 |
 | 共享网关 | `app/services/gateway_service.py` | 遥测网关与 manager 状态文件 |
 | 后端 manager | `scripts/run_backend.py` | 托管共享网关并按配置重载 |
+| manager 包装脚本 | `scripts/manage_backend.py` | 一键 `start / stop / restart / status` |
 | 聊天后端 | `app/agent/chat_agent.py` | `local_rule / real_llm / local_ollama` |
 | Tool 层 | `app/agent/dashboard_tools.py` | 设备查询与趋势分析工具 |
 | MPC Skill 适配 | `app/mpc/dashboard_skill_adapter.py` | Dashboard Tool 的 Skill 风格包装 |
@@ -106,7 +109,7 @@ python scripts/build_mobile_android_apk.py
 
 1. 真实模型模式真正联通可用账号并验证稳定性
 2. 继续收敛 Android 真机联调与后台上报稳定性
-3. 继续完善 PC 客户端，例如托盘模式和开机自启动
+3. 继续完善 PC 客户端，例如版本提示和本地日志入口
 4. 在现有共享网关基础上评估 MQTT 补充接入
 
 ## 7. 当前不建议优先动的部分

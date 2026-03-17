@@ -26,6 +26,7 @@ def test_render_release_readme_mentions_script_and_exe():
     assert "EXE" in readme
     assert "run_personal_pc_gui.bat" in readme
     assert "run_personal_pc_headless.bat" in readme
+    assert "run_personal_pc_minimized.bat" in readme
     assert target.sample_command in readme
 
 
@@ -58,3 +59,4 @@ def test_write_script_bundle_copies_runtime_dependencies(tmp_path: Path):
     assert (target_root / "script" / "app" / "services" / "telemetry_client.py").exists()
     assert (target_root / "script" / "run_personal_pc_gui.bat").exists()
     assert (target_root / "script" / "run_personal_pc_headless.bat").exists()
+    assert (target_root / "script" / "run_personal_pc_minimized.bat").exists()

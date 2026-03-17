@@ -7,6 +7,7 @@ import json
 import os
 import queue
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -15,6 +16,14 @@ from dataclasses import dataclass
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk
+
+try:
+    import pystray
+    from PIL import Image, ImageDraw
+except ImportError:  # pragma: no cover - optional dependency
+    pystray = None
+    Image = None
+    ImageDraw = None
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -25,6 +34,7 @@ from scripts.personal_pc_client import collect_metrics
 
 
 SETTINGS_FILENAME = "personal_pc_client_app.json"
+AUTOSTART_FILENAME = "DeviceSentinel-Personal-PC-Client.cmd"
 APP_TITLE = "DeviceSentinel Personal PC Client"
 MAX_RETRY_DELAY_SECONDS = 30
 METRIC_DEFINITIONS = [
@@ -49,6 +59,70 @@ def get_settings_path() -> Path:
     appdata = os.getenv("APPDATA")
     base_dir = Path(appdata) / "DeviceSentinel" if appdata else Path.home() / ".device_sentinel"
     return base_dir / SETTINGS_FILENAME
+
+
+def get_startup_path() -> Path:
+    appdata = os.getenv("APPDATA")
+    if appdata:
+        return Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup" / AUTOSTART_FILENAME
+    return Path.home() / ".config" / AUTOSTART_FILENAME
+
+
+def _resolve_pythonw_executable(executable: str | None = None) -> str:
+    current = Path(executable or sys.executable)
+    if current.name.lower() == "python.exe":
+        candidate = current.with_name("pythonw.exe")
+        if candidate.exists():
+            return str(candidate)
+    return str(current)
+
+
+def build_autostart_command(
+    *,
+    executable_path: str | None = None,
+    script_path: str | None = None,
+    start_minimized: bool = True,
+) -> str:
+    args: list[str]
+    if getattr(sys, "frozen", False):
+        args = [executable_path or sys.executable]
+    else:
+        args = [
+            _resolve_pythonw_executable(executable_path),
+            script_path or str(Path(__file__).resolve()),
+        ]
+    if start_minimized:
+        args.append("--start-minimized")
+    return subprocess.list2cmdline(args)
+
+
+def is_autostart_enabled(startup_path: Path | None = None) -> bool:
+    return (startup_path or get_startup_path()).exists()
+
+
+def set_autostart_enabled(
+    enabled: bool,
+    *,
+    startup_path: Path | None = None,
+    executable_path: str | None = None,
+    script_path: str | None = None,
+) -> Path:
+    path = startup_path or get_startup_path()
+    if enabled:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        command = build_autostart_command(
+            executable_path=executable_path,
+            script_path=script_path,
+            start_minimized=True,
+        )
+        path.write_text(f"@echo off\r\nstart \"\" {command}\r\n", encoding="utf-8")
+    elif path.exists():
+        path.unlink()
+    return path
+
+
+def supports_system_tray() -> bool:
+    return pystray is not None and Image is not None and ImageDraw is not None
 
 
 def build_default_instance_id() -> str:
@@ -114,6 +188,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gateway-path", "--path", dest="gateway_path")
     parser.add_argument("--interval", type=int)
     parser.add_argument("--headless", action="store_true", help="Run the client without opening the GUI.")
+    parser.add_argument("--start-minimized", action="store_true", help="Start the GUI hidden in the system tray.")
     parser.add_argument("--once", action="store_true", help="Send a single telemetry payload and exit.")
     return parser
 
@@ -198,7 +273,7 @@ def run_headless(config: PersonalPcClientConfig, *, once: bool) -> None:
 
 
 class PersonalPcClientApp(tk.Tk):
-    def __init__(self, config: PersonalPcClientConfig) -> None:
+    def __init__(self, config: PersonalPcClientConfig, *, start_minimized: bool = False) -> None:
         super().__init__()
         self.title(APP_TITLE)
         self.geometry("1180x760")
@@ -208,12 +283,18 @@ class PersonalPcClientApp(tk.Tk):
         self.stop_event = threading.Event()
         self.event_queue: queue.Queue[dict[str, object]] = queue.Queue()
         self.history = {metric_id: deque(maxlen=48) for metric_id, _, _ in METRIC_DEFINITIONS}
+        self.tray_icon = None
+        self.tray_thread: threading.Thread | None = None
+        self.tray_supported = supports_system_tray()
+        self.start_minimized = start_minimized
+        self.force_exit = False
 
         self.instance_id_var = tk.StringVar(value=config.instance_id)
         self.gateway_host_var = tk.StringVar(value=config.gateway_host)
         self.gateway_port_var = tk.StringVar(value=str(config.gateway_port))
         self.gateway_path_var = tk.StringVar(value=config.gateway_path)
         self.interval_var = tk.StringVar(value=str(config.interval))
+        self.autostart_var = tk.BooleanVar(value=is_autostart_enabled())
         self.status_var = tk.StringVar(value="待连接")
         self.gateway_var = tk.StringVar(value=build_gateway_preview(config))
         self.last_push_var = tk.StringVar(value="尚未发送")
@@ -229,6 +310,8 @@ class PersonalPcClientApp(tk.Tk):
         self._register_persistence_hooks()
         self._poll_queue()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        if self.start_minimized:
+            self.after(250, self._minimize_to_tray)
 
     def _build_layout(self) -> None:
         self.configure(bg="#eef2f6")
@@ -278,14 +361,33 @@ class PersonalPcClientApp(tk.Tk):
         self.start_button.pack(side="left")
         self.stop_button = ttk.Button(action_bar, text="停止上报", command=self._stop_worker, state="disabled")
         self.stop_button.pack(side="left", padx=8)
+        self.minimize_button = ttk.Button(
+            action_bar,
+            text="最小化到托盘",
+            command=self._minimize_to_tray,
+            state="normal" if self.tray_supported else "disabled",
+        )
+        self.minimize_button.pack(side="left")
+        ttk.Checkbutton(
+            action_bar,
+            text="开机自启动",
+            variable=self.autostart_var,
+            command=self._handle_autostart_toggle,
+        ).pack(side="left", padx=12)
         ttk.Label(
             action_bar,
             text="配置会自动保存在系统缓存目录；再次点击“开始上报”会按最新参数重新启动。",
-        ).pack(side="left", padx=12)
+        ).pack(side="left", padx=8)
+        if not self.tray_supported:
+            ttk.Label(action_bar, text="当前环境未安装 pystray，托盘功能将自动禁用。").pack(side="left", padx=8)
         ttk.Label(
             config_card,
             text=f"本地配置缓存：{get_settings_path()}",
         ).grid(row=3, column=0, columnspan=5, sticky="w", pady=(10, 0))
+        ttk.Label(
+            config_card,
+            text=f"开机自启动脚本：{get_startup_path()}",
+        ).grid(row=4, column=0, columnspan=5, sticky="w", pady=(4, 0))
 
         meta_card = ttk.Frame(root)
         meta_card.grid(row=2, column=0, sticky="nsew")
@@ -350,6 +452,66 @@ class PersonalPcClientApp(tk.Tk):
         except ValueError:
             self.gateway_var.set("配置待修正")
         _try_save_current_config(self._build_config)
+
+    def _handle_autostart_toggle(self) -> None:
+        try:
+            path = set_autostart_enabled(self.autostart_var.get())
+        except OSError as exc:
+            self.autostart_var.set(is_autostart_enabled())
+            self.response_var.set(f"开机自启动设置失败：{exc}")
+            return
+
+        if self.autostart_var.get():
+            self.response_var.set(f"已启用开机自启动：{path}")
+        else:
+            self.response_var.set("已关闭开机自启动。")
+
+    def _create_tray_image(self):
+        image = Image.new("RGB", (64, 64), "#0f172a")
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle((8, 8, 56, 56), radius=12, fill="#2563eb")
+        draw.rectangle((20, 18, 30, 46), fill="#f8fafc")
+        draw.rectangle((34, 26, 44, 46), fill="#bfdbfe")
+        return image
+
+    def _ensure_tray_icon(self) -> None:
+        if not self.tray_supported or self.tray_icon is not None:
+            return
+
+        menu = pystray.Menu(
+            pystray.MenuItem("显示窗口", lambda _icon, _item: self.after(0, self._restore_from_tray)),
+            pystray.MenuItem("开始上报", lambda _icon, _item: self.after(0, self._start_worker)),
+            pystray.MenuItem("停止上报", lambda _icon, _item: self.after(0, self._stop_worker)),
+            pystray.MenuItem("退出程序", lambda _icon, _item: self.after(0, self._exit_from_tray)),
+        )
+        self.tray_icon = pystray.Icon("devicesentinel-personal-pc", self._create_tray_image(), APP_TITLE, menu)
+        self.tray_thread = threading.Thread(target=self.tray_icon.run, daemon=True, name="personal-pc-tray")
+        self.tray_thread.start()
+
+    def _shutdown_tray_icon(self) -> None:
+        if self.tray_icon is not None:
+            self.tray_icon.stop()
+            self.tray_icon = None
+        self.tray_thread = None
+
+    def _minimize_to_tray(self) -> None:
+        if not self.tray_supported:
+            self.iconify()
+            return
+        self._ensure_tray_icon()
+        self.withdraw()
+        self.status_var.set("托盘运行中")
+        self.response_var.set("窗口已隐藏到系统托盘，可通过托盘菜单恢复。")
+
+    def _restore_from_tray(self) -> None:
+        self.deiconify()
+        self.lift()
+        self.focus_force()
+        self.status_var.set("窗口已恢复")
+
+    def _exit_from_tray(self) -> None:
+        self.force_exit = True
+        self._on_close()
 
     def _build_status_field(self, parent: ttk.Frame, column: int, label: str, variable: tk.StringVar) -> None:
         frame = ttk.Frame(parent)
@@ -502,14 +664,18 @@ class PersonalPcClientApp(tk.Tk):
         canvas.create_text(width - 8, 10, text=f"{latest_value:.1f}", fill="#0f172a", anchor="ne")
 
     def _on_close(self) -> None:
+        if self.tray_supported and not self.force_exit:
+            self._minimize_to_tray()
+            return
         _try_save_current_config(self._build_config)
         self._stop_worker(wait=True)
+        self._shutdown_tray_icon()
         self.destroy()
 
 
-def run_gui(config: PersonalPcClientConfig) -> None:
+def run_gui(config: PersonalPcClientConfig, *, start_minimized: bool = False) -> None:
     save_config(config)
-    app = PersonalPcClientApp(config)
+    app = PersonalPcClientApp(config, start_minimized=start_minimized)
     app.mainloop()
 
 
@@ -522,7 +688,7 @@ def main() -> None:
         run_headless(config, once=args.once)
         return
 
-    run_gui(config)
+    run_gui(config, start_minimized=args.start_minimized)
 
 
 if __name__ == "__main__":

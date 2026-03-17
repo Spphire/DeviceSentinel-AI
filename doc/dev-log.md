@@ -5,6 +5,15 @@
 
 ## 2026-03-17
 
+### PC 客户端托盘 / 开机自启动 + backend manager 包装脚本
+
+- 个人 PC GUI 客户端新增托盘最小化、`--start-minimized` 和“开机自启动”开关
+- 开机自启动通过 Windows Startup 目录下的启动脚本实现，不依赖额外系统配置
+- 当前环境已补装 `pystray`，本机托盘能力可直接使用
+- 新增 `scripts/manage_backend.py`，支持一键 `start / stop / restart / status`
+- 已重打个人 PC release，新的脚本包和 EXE 已包含托盘/自启动相关更新
+- 为 autostart helper、backend wrapper 和 release 启动器补充测试后，相关测试通过
+
 ### 聊天主流程 Skill 收敛 + backend smoke test
 
 - `local_rule` 原来还在直接读 `context` 做本地判断，这一轮已经统一改为通过 `dashboard_skill_adapter` 调技能再整形回答

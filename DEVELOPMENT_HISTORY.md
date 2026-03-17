@@ -4,7 +4,7 @@
 
 项目名称：基于 MPC Skill 的电气设备状态监测 AI Agent 系统  
 当前定位：学生级课程设计 / 毕业设计演示系统  
-当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调、PC GUI / Windows EXE / Android APK 客户端交付，以及 GitHub 协作文档、Projects 看板整理、backend manager 健康自检和聊天主流程 Skill 收敛
+当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调、PC GUI / Windows EXE / Android APK 客户端交付，以及 GitHub 协作文档、Projects 看板整理、backend manager 健康自检、聊天主流程 Skill 收敛和 PC 客户端产品化增强
 
 ## 当前能力
 
@@ -38,6 +38,11 @@
   - [personal_pc_client.py](scripts/personal_pc_client.py)
   - [mobile_device_client.py](scripts/mobile_device_client.py)
   - [temp_humidity_client.py](scripts/temp_humidity_client.py)
+- 个人 PC 客户端已支持：
+  - 托盘最小化
+  - 开机自启动
+  - 自动重试
+  - Windows EXE 重打包
 - 已支持 Android 客户端工程与 APK 构建：
   - [android/mobile-client](android/mobile-client)
   - [build_mobile_android_apk.py](scripts/build_mobile_android_apk.py)
@@ -56,6 +61,7 @@
 - MPC Skill 适配：`app/mpc/dashboard_skill_adapter.py`
 - 共享网关服务：`app/services/gateway_service.py`
 - 后端管理主程序：`scripts/run_backend.py`
+- 后端管理包装脚本：`scripts/manage_backend.py`
 - 页面入口：`streamlit_app.py`
 
 ## 已完成开发历史
@@ -264,13 +270,21 @@
 - 个人 PC GUI / headless 客户端新增自动重试、失败次数提示和目标网关预览
 - 为聊天主流程收敛、smoke test 和 PC 客户端自动重试补充测试
 
+### 2026-03-17 第二十四阶段
+
+- 个人 PC GUI 客户端新增托盘最小化和 `--start-minimized` 启动参数
+- 个人 PC GUI 客户端新增“开机自启动”开关，通过 Windows Startup 目录脚本实现
+- 本机已安装 `pystray`，托盘功能可直接使用
+- 新增 `scripts/manage_backend.py`，支持共享网关 backend manager 的 `start / stop / restart / status`
+- 个人 PC release 构建补上最小化启动脚本，并重新输出新的脚本包和 EXE
+- 为 autostart helper、backend wrapper 和 release 启动器补充测试
+
 ### 2026-03-17 当前待继续工作（含优先级）
 
 - `P2` 真正联通可用的真实模型账号与 API Key，验证页面里的 `real_llm` 模式
-- `P2` 让聊天主流程进一步统一走 `dashboard_skill_adapter`，收敛 Tool / Skill 两套入口，便于后续真正挂接外部 MPC Skill
 - `P2` 继续推进 Android 真机联调，验证锁屏后台、局域网连通和弱网上报表现
-- `P2` 继续产品化个人 PC 客户端，例如托盘运行、开机自启动和版本提示
-- `P2` 将 backend manager 继续向启动脚本 / 服务化包装推进，减少手动运维操作
+- `P2` 继续产品化个人 PC 客户端，例如版本提示和本地日志入口
+- `P2` 继续增强移动端客户端的连接状态与本地说明
 - `P2` 评估是否为真实设备接入增加 `MQTT` 模式，与当前 `HTTP JSON push` 并存；重点比较单机演示复杂度、多设备扩展性、跨主机部署和断线重连体验
 - `P2` 继续优化本地 Ollama / 真实模型提示词，减少无效调用
 - `P2` 继续扩展 Dashboard Tool / MPC Skill，补充更多筛选和聚合查询能力
@@ -294,7 +308,7 @@ set OPENAI_API_KEY=<你的 API Key>
 启动共享后端管理主程序：
 
 ```bash
-python scripts/run_backend.py
+python scripts/manage_backend.py start
 ```
 
 发送个人 PC 指标：

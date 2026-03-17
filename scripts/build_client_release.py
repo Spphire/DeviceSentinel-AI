@@ -47,7 +47,7 @@ def get_release_targets(project_root: Path | None = None) -> dict[str, ReleaseTa
                 "python scripts/personal_pc_client_app.py --instance-id personal_pc_real-demo "
                 "--gateway-host 192.168.1.10 --gateway-port 10570 --gateway-path /telemetry"
             ),
-            description="默认打开图形界面，支持填写网关地址、查看资源曲线，并可追加 --headless 无界面运行。",
+            description="默认打开图形界面，支持托盘、开机自启动、查看资源曲线，并可追加 --headless 无界面运行。",
             bundle_files=(
                 root / "scripts" / "personal_pc_client_app.py",
                 root / "scripts" / "personal_pc_client.py",
@@ -62,6 +62,11 @@ def get_release_targets(project_root: Path | None = None) -> dict[str, ReleaseTa
                     filename="run_personal_pc_headless.bat",
                     script_relative_path=r"scripts\personal_pc_client_app.py",
                     default_args="--headless",
+                ),
+                ReleaseLauncher(
+                    filename="run_personal_pc_minimized.bat",
+                    script_relative_path=r"scripts\personal_pc_client_app.py",
+                    default_args="--start-minimized",
                 ),
             ),
             pyinstaller_windowed=True,

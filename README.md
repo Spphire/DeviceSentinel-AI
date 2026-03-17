@@ -24,7 +24,7 @@
 | MPC Skill 平台联调 | 已完成本地 Tool/Skill 适配层 |
 | backend manager | 已支持共享网关托管、健康检查、自恢复与状态快照 |
 | 聊天主流程 | 已统一走 Skill adapter，并支持命令行 smoke test |
-| 客户端 release 打包 | 已支持 PC 脚本 / GUI EXE 与 Android APK 构建 |
+| 客户端 release 打包 | 已支持 PC 脚本 / GUI EXE（含托盘/自启动）与 Android APK 构建 |
 
 ## 文档导航
 
@@ -59,7 +59,7 @@ flowchart LR
     E --> F["本地 AI 风格总结<br/>report_generator.py"]
     E --> G["Streamlit 可视化面板<br/>streamlit_app.py"]
     F --> G
-    I["后端管理主程序<br/>scripts/run_backend.py"] --> D
+    I["后端管理主程序<br/>scripts/manage_backend.py / run_backend.py"] --> D
     E --> H["后续扩展<br/>MPC Skill / 大模型对话"]
 ```
 
@@ -110,7 +110,7 @@ streamlit run streamlit_app.py --server.port 7787
 启动共享后端管理主程序：
 
 ```bash
-python scripts/run_backend.py
+python scripts/manage_backend.py start
 ```
 
 启动个人 PC 客户端（默认打开 GUI）：
@@ -123,6 +123,12 @@ python scripts/personal_pc_client_app.py --instance-id <设备实例ID> --gatewa
 
 ```bash
 python scripts/personal_pc_client_app.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry --headless
+```
+
+如需直接最小化到托盘启动，可追加 `--start-minimized`：
+
+```bash
+python scripts/personal_pc_client_app.py --instance-id <设备实例ID> --gateway-host <仪表盘IP> --gateway-port 10570 --gateway-path /telemetry --start-minimized
 ```
 
 启动手机端脚本客户端：
