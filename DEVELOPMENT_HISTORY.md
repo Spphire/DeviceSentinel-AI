@@ -4,7 +4,7 @@
 
 项目名称：基于 MPC Skill 的电气设备状态监测 AI Agent 系统  
 当前定位：学生级课程设计 / 毕业设计演示系统  
-当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调、PC GUI / Windows EXE / Android APK 客户端交付，以及 GitHub 协作文档与 Projects 看板整理
+当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调、PC GUI / Windows EXE / Android APK 客户端交付，以及 GitHub 协作文档、Projects 看板整理和 backend manager 健康自检
 
 ## 当前能力
 
@@ -246,11 +246,22 @@
 - 补充了产品、架构、AI、客户端、答辩展示等方向的持续优化判断依据
 - 继续将文档和 GitHub Projects 保持同步，降低后续接手成本
 
+### 2026-03-17 第二十二阶段
+
+- 为共享 HTTP 网关新增固定 `/health` 健康检查接口
+- `scripts/run_backend.py` 增加健康探针、自恢复重启和状态文件健康写入
+- `gateway_manager_status.json` 现可识别 manager PID 是否存活，以及状态文件是否已过期
+- 页面设置中的共享网关区域，现可区分“运行中但不健康”和“遗留状态文件”两类情况
+- GitHub 状态快照与静态页同步展示网关健康、PID 存活和遗留状态
+- 补充网关与状态页测试后，`python -m pytest` 全量通过
+
 ### 2026-03-17 当前待继续工作（含优先级）
 
 - `P2` 真正联通可用的真实模型账号与 API Key，验证页面里的 `real_llm` 模式
 - `P2` 让聊天主流程进一步统一走 `dashboard_skill_adapter`，收敛 Tool / Skill 两套入口，便于后续真正挂接外部 MPC Skill
-- `P2` 进一步细化 backend manager，例如补充 PID 文件、健康检查和启动脚本，减少手动运维操作
+- `P2` 继续推进 Android 真机联调，验证锁屏后台、局域网连通和弱网上报表现
+- `P2` 继续产品化个人 PC 客户端，例如自动重连、错误提示和托盘运行
+- `P2` 将 backend manager 继续向启动脚本 / 服务化包装推进，减少手动运维操作
 - `P2` 评估是否为真实设备接入增加 `MQTT` 模式，与当前 `HTTP JSON push` 并存；重点比较单机演示复杂度、多设备扩展性、跨主机部署和断线重连体验
 - `P2` 继续优化本地 Ollama / 真实模型提示词，减少无效调用
 - `P2` 继续扩展 Dashboard Tool / MPC Skill，补充更多筛选和聚合查询能力

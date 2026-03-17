@@ -284,6 +284,9 @@ def _resolve_gateway_runtime_summary(settings: dict) -> dict:
             "client_target": client_target,
             "last_error": status.get("last_error"),
             "updated_at": status.get("updated_at"),
+            "health": status.get("health"),
+            "manager_pid_alive": bool(status.get("manager_pid_alive")),
+            "stale_status": bool(status.get("stale_status")),
         }
 
     return {
@@ -294,6 +297,9 @@ def _resolve_gateway_runtime_summary(settings: dict) -> dict:
         "client_target": build_gateway_client_target(desired_config),
         "last_error": None,
         "updated_at": None,
+        "health": None,
+        "manager_pid_alive": False,
+        "stale_status": False,
     }
 
 
@@ -413,6 +419,7 @@ def _render_settings_dialog() -> None:
 
     active_gateway = gateway_summary["active_config"]
     client_target = gateway_summary["client_target"]
+    health = gateway_summary.get("health") or {}
     if gateway_summary["running"]:
         st.success(
             "当前共享网关运行中："
@@ -422,6 +429,21 @@ def _render_settings_dialog() -> None:
         )
     else:
         st.warning("当前未检测到 backend manager 正在托管共享网关。页面仍可保存配置，但不会自动重启服务。")
+    if gateway_summary["stale_status"]:
+        st.warning("检测到遗留网关状态文件，但 backend manager 进程已经退出；建议重新启动 `python scripts/run_backend.py`。")
+    elif gateway_summary["manager_pid"] and not gateway_summary["manager_pid_alive"]:
+        st.warning("backend manager PID 已失效，当前状态可能不是最新结果。")
+    if health:
+        checked_at = health.get("checked_at") or "-"
+        health_url = health.get("url") or "-"
+        if health.get("ok"):
+            st.caption(f"健康检查：正常，最近探测 {checked_at}，探针地址 `{health_url}`。")
+        else:
+            st.error(
+                "健康检查失败："
+                f"{health.get('error') or '未返回正常响应。'}"
+                f"（最近探测 {checked_at}，地址 `{health_url}`）"
+            )
     if gateway_summary["last_error"]:
         st.error(gateway_summary["last_error"])
 

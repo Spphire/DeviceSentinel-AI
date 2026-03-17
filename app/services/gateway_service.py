@@ -11,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Lock, Thread
 from typing import Any
+from urllib import error, request
 
 from app.services.real_device_store import append_real_device_event
 
@@ -18,7 +19,9 @@ from app.services.real_device_store import append_real_device_event
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STORAGE_DIR = PROJECT_ROOT / "storage"
 GATEWAY_MANAGER_STATUS_PATH = STORAGE_DIR / "gateway_manager_status.json"
+GATEWAY_MANAGER_PID_PATH = STORAGE_DIR / "gateway_manager.pid"
 DEFAULT_GATEWAY_PATH = "/telemetry"
+DEFAULT_GATEWAY_HEALTH_PATH = "/health"
 
 
 @dataclass(frozen=True)
@@ -69,14 +72,76 @@ def build_gateway_client_target(config: GatewayConfig) -> dict[str, Any]:
     }
 
 
+def build_gateway_health_url(config: GatewayConfig) -> str:
+    host = config.listen_host
+    lowered = host.lower()
+    if lowered in {"0.0.0.0", "::", ""}:
+        host = "127.0.0.1"
+    return f"http://{host}:{config.port}{DEFAULT_GATEWAY_HEALTH_PATH}"
+
+
+def probe_gateway_health(config: GatewayConfig, *, timeout: float = 1.5) -> dict[str, Any]:
+    url = build_gateway_health_url(config)
+    checked_at = datetime.now().isoformat(timespec="seconds")
+    try:
+        with request.urlopen(url, timeout=timeout) as response:
+            body = response.read().decode("utf-8")
+            payload = json.loads(body)
+            return {
+                "ok": response.status == 200 and payload.get("status") == "ok",
+                "status_code": response.status,
+                "checked_at": checked_at,
+                "url": url,
+                "response": payload,
+                "error": None,
+            }
+    except (error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+        return {
+            "ok": False,
+            "status_code": None,
+            "checked_at": checked_at,
+            "url": url,
+            "response": None,
+            "error": str(exc),
+        }
+
+
+def is_process_alive(pid: int | None) -> bool:
+    if pid is None or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except (OSError, SystemError, ValueError):
+        return False
+    return True
+
+
 def load_gateway_manager_status(status_path: Path | None = None) -> dict[str, Any] | None:
     path = status_path or GATEWAY_MANAGER_STATUS_PATH
     if not path.exists():
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return None
+
+    manager_pid = payload.get("manager_pid")
+    manager_pid_alive = is_process_alive(manager_pid)
+    payload["manager_pid_alive"] = manager_pid_alive
+    if manager_pid and not manager_pid_alive:
+        payload["running"] = False
+        payload["stale_status"] = True
+        payload["last_error"] = payload.get("last_error") or "检测到遗留状态文件，但 backend manager 进程已不存在。"
+        health = payload.get("health") or {}
+        payload["health"] = {
+            **health,
+            "ok": False,
+            "checked_at": health.get("checked_at") or datetime.now().isoformat(timespec="seconds"),
+            "error": health.get("error") or "backend manager 进程已退出。",
+        }
+    else:
+        payload["stale_status"] = False
+    return payload
 
 
 def write_gateway_manager_status(
@@ -85,38 +150,82 @@ def write_gateway_manager_status(
     config: GatewayConfig | None,
     desired_config: GatewayConfig | None = None,
     last_error: str | None = None,
+    health: dict[str, Any] | None = None,
     status_path: Path | None = None,
 ) -> None:
     path = status_path or GATEWAY_MANAGER_STATUS_PATH
     STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    pid = os.getpid()
 
     payload = {
         "running": running,
-        "manager_pid": os.getpid(),
+        "manager_pid": pid,
+        "manager_pid_alive": True,
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "gateway": None if config is None else config.to_dict(),
         "desired_gateway": None if desired_config is None else desired_config.to_dict(),
         "client_target": None if config is None else build_gateway_client_target(config),
         "last_error": last_error,
+        "health": health,
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_gateway_manager_pid(pid)
 
 
 def clear_gateway_manager_status(status_path: Path | None = None) -> None:
     path = status_path or GATEWAY_MANAGER_STATUS_PATH
     if path.exists():
         path.unlink()
+    clear_gateway_manager_pid()
+
+
+def write_gateway_manager_pid(pid: int, pid_path: Path | None = None) -> None:
+    path = pid_path or GATEWAY_MANAGER_PID_PATH
+    STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    path.write_text(str(pid), encoding="utf-8")
+
+
+def clear_gateway_manager_pid(pid_path: Path | None = None) -> None:
+    path = pid_path or GATEWAY_MANAGER_PID_PATH
+    if path.exists():
+        path.unlink()
 
 
 def build_handler(accepted_path: str):
+    accepted_health_paths = {DEFAULT_GATEWAY_HEALTH_PATH}
+    normalized_path = accepted_path.rstrip("/") or accepted_path
+    accepted_health_paths.add(f"{normalized_path}{DEFAULT_GATEWAY_HEALTH_PATH}")
+
     class TelemetryHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802
+            if self.path not in accepted_health_paths:
+                self.send_error(404, "Path not found.")
+                return
+
+            response = {
+                "status": "ok",
+                "service": "telemetry_gateway",
+                "telemetry_path": accepted_path,
+                "health_path": DEFAULT_GATEWAY_HEALTH_PATH,
+            }
+            body = json.dumps(response, ensure_ascii=False).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
         def do_POST(self) -> None:  # noqa: N802
             if accepted_path and self.path != accepted_path:
                 self.send_error(404, "Path not found.")
                 return
 
-            content_length = int(self.headers.get("Content-Length", "0"))
-            payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            try:
+                content_length = int(self.headers.get("Content-Length", "0"))
+                payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            except (TypeError, ValueError, json.JSONDecodeError):
+                self.send_error(400, "Invalid JSON payload.")
+                return
             payload["meta"] = {
                 **payload.get("meta", {}),
                 "remote_addr": self.client_address[0],
@@ -152,21 +261,33 @@ class ManagedTelemetryGateway:
     def config(self) -> GatewayConfig | None:
         return self._config
 
-    def start(self, config: GatewayConfig) -> GatewayConfig:
+    def is_running(self) -> bool:
+        return self._server is not None and self._thread is not None and self._thread.is_alive()
+
+    def start(self, config: GatewayConfig, *, force_restart: bool = False) -> GatewayConfig:
         with self._lock:
-            if self._config == config and self._server is not None and self._thread is not None and self._thread.is_alive():
-                return config
+            if self._config == config and self.is_running() and not force_restart:
+                return self._config
 
             self._stop_locked()
 
             server = _ReusableThreadingHTTPServer((config.listen_host, config.port), build_handler(config.path))
             thread = Thread(target=server.serve_forever, name="telemetry-gateway", daemon=True)
             thread.start()
+            effective_config = GatewayConfig(
+                listen_host=config.listen_host,
+                port=server.server_port,
+                path=config.path,
+                advertised_host=config.advertised_host,
+            )
 
             self._server = server
             self._thread = thread
-            self._config = config
-            return config
+            self._config = effective_config
+            return effective_config
+
+    def restart(self, config: GatewayConfig) -> GatewayConfig:
+        return self.start(config, force_restart=True)
 
     def stop(self) -> None:
         with self._lock:

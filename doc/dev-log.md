@@ -5,6 +5,14 @@
 
 ## 2026-03-17
 
+### backend manager 健康检查收口
+
+- 共享 HTTP 网关补上固定 `/health` 探针接口
+- `scripts/run_backend.py` 现在会主动探测网关健康状态，并在失败时尝试自动重启
+- `gateway_manager_status.json` 新增健康结果、PID 存活状态和遗留状态文件判定
+- 设置面板与状态快照页都开始展示“运行中 / 健康 / 遗留状态”这类更工程化的信息
+- 补充网关与状态页测试后，全量测试通过 `61 passed`
+
 ### 文档收口与优化路线补充
 
 - 重新整理文档中心导航，补上 `optimization-qa.md`

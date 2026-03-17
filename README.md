@@ -22,6 +22,7 @@
 | 聊天式 AI 助手 | 已支持本地规则 / 本地 Ollama / 真实模型 |
 | 真实大模型接入 | 已支持后端适配 / 待配置 API Key |
 | MPC Skill 平台联调 | 已完成本地 Tool/Skill 适配层 |
+| backend manager | 已支持共享网关托管、健康检查、自恢复与状态快照 |
 | 客户端 release 打包 | 已支持 PC 脚本 / GUI EXE 与 Android APK 构建 |
 
 ## 文档导航

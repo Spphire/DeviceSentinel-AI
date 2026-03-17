@@ -8,7 +8,29 @@ from app.services.status_publisher import (
 
 
 def test_build_status_snapshot_includes_counts_and_devices(monkeypatch):
-    monkeypatch.setattr("app.services.status_publisher.load_gateway_manager_status", lambda: None)
+    monkeypatch.setattr(
+        "app.services.status_publisher.load_gateway_manager_status",
+        lambda: {
+            "running": True,
+            "manager_pid": 5566,
+            "manager_pid_alive": True,
+            "stale_status": False,
+            "updated_at": "2026-03-17T10:10:00",
+            "gateway": {
+                "listen_host": "127.0.0.1",
+                "port": 10570,
+                "path": "/telemetry",
+                "advertised_host": "",
+            },
+            "client_target": {"host": "127.0.0.1", "port": 10570, "path": "/telemetry"},
+            "last_error": None,
+            "health": {
+                "ok": True,
+                "checked_at": "2026-03-17T10:10:05",
+                "url": "http://127.0.0.1:10570/health",
+            },
+        },
+    )
     settings = {
         "system": {
             "history_window": 60,
@@ -41,6 +63,8 @@ def test_build_status_snapshot_includes_counts_and_devices(monkeypatch):
     assert snapshot["devices"][0]["instance_id"] == "sgcc-demo-001"
     assert snapshot["devices"][0]["metrics"]
     assert snapshot["gateway"]["client_target"]["path"] == "/telemetry"
+    assert snapshot["gateway"]["health"]["ok"] is True
+    assert snapshot["gateway"]["manager_pid_alive"] is True
 
 
 def test_extract_snapshot_from_event_payload_reads_repository_dispatch_payload():
@@ -72,11 +96,19 @@ def test_render_status_site_writes_html_and_json(tmp_path):
         "gateway": {
             "running": True,
             "manager_pid": 1234,
+            "manager_pid_alive": True,
+            "stale_status": False,
             "listen_host": "127.0.0.1",
             "port": 10570,
             "path": "/telemetry",
             "client_target": {"host": "127.0.0.1", "port": 10570, "path": "/telemetry"},
             "last_error": None,
+            "health": {
+                "ok": True,
+                "checked_at": "2026-03-17T01:00:10",
+                "url": "http://127.0.0.1:10570/health",
+            },
+            "updated_at": "2026-03-17T01:00:10",
         },
         "agent": {
             "mode": "local_ollama",

@@ -4,12 +4,13 @@
 
 ## 1. 当前阶段
 
-项目当前已经完成到“第二十一阶段”：
+项目当前已经完成到“第二十二阶段”：
 
 - 模板驱动的混合设备监测面板已稳定可用
 - 聊天 Agent 已支持 `local_rule / real_llm / local_ollama`
 - 本机已完成 `Ollama + qwen2.5:7b` 联调
 - 真实设备接入已收敛为“共享 HTTP 网关 + backend manager”
+- backend manager 已补上健康检查、PID 状态识别和遗留状态文件自检
 - 个人 PC 客户端已支持 GUI / headless、Windows EXE 与本地配置缓存
 - 手机端真实设备模板与脚本客户端已接入当前链路，Android APK 客户端工程已落地并可本机构建
 - GitHub 已补上状态摘要发布工作流，可自动发布静态状态页
@@ -49,6 +50,7 @@ python scripts/build_mobile_android_apk.py
 - 真实个人 PC 指标采集与上报
 - 个人 PC GUI / headless 客户端配置缓存与重启生效
 - 共享网关配置修改后由 backend manager 自动重载
+- backend manager 健康探针、状态文件写入与页面可见性
 - 聊天面板本地规则问答
 - 聊天面板本地 `Ollama` 问答
 - 手机端客户端模拟上报
@@ -93,7 +95,7 @@ python scripts/build_mobile_android_apk.py
 
 1. 真实模型模式真正联通可用账号并验证稳定性
 2. 继续收敛 Tool / Skill 两套入口，让聊天主流程统一走 Skill adapter
-3. 继续完善 backend manager，例如 PID/健康检查/启动脚本
+3. 继续收敛 Android 真机联调与后台上报稳定性
 4. 在现有共享网关基础上评估 MQTT 补充接入
 
 ## 7. 当前不建议优先动的部分

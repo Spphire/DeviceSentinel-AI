@@ -135,11 +135,15 @@ def build_status_snapshot(
         "gateway": {
             "running": bool(gateway_status.get("running")),
             "manager_pid": gateway_status.get("manager_pid"),
+            "manager_pid_alive": bool(gateway_status.get("manager_pid_alive")),
+            "stale_status": bool(gateway_status.get("stale_status")),
             "listen_host": active_gateway.listen_host,
             "port": active_gateway.port,
             "path": active_gateway.path,
             "client_target": client_target,
             "last_error": gateway_status.get("last_error"),
+            "health": gateway_status.get("health"),
+            "updated_at": gateway_status.get("updated_at"),
         },
         "agent": {
             "mode": agent_backend.mode,
@@ -203,9 +207,20 @@ def _build_status_html(snapshot: dict[str, Any]) -> str:
         else "<div class='empty'>当前没有可同步的真实设备最近事件。</div>"
     )
     gateway_status = "运行中" if gateway["running"] else "未检测到 manager"
+    health = gateway.get("health") or {}
+    health_status = "健康" if health.get("ok") else "未探测" if not health else "异常"
     gateway_error = (
         f"<div class='note warning'>{html.escape(gateway['last_error'])}</div>"
         if gateway.get("last_error")
+        else ""
+    )
+    health_note = (
+        f"<div class='note'>健康状态：{html.escape(health_status)} / 最近探测："
+        f"{html.escape(health.get('checked_at') or '-')} / 地址：{html.escape(health.get('url') or '-')}</div>"
+    )
+    stale_note = (
+        "<div class='note warning'>检测到遗留状态文件，backend manager 进程已经退出，请在本机重新启动托管服务。</div>"
+        if gateway.get("stale_status")
         else ""
     )
 
@@ -477,8 +492,11 @@ def _build_status_html(snapshot: dict[str, Any]) -> str:
           </div>
           <div class="note">
             Manager PID：{html.escape(str(gateway.get("manager_pid") or "-"))}<br>
+            PID 存活：{html.escape("是" if gateway.get("manager_pid_alive") else "否")}<br>
             监听地址：{html.escape(gateway["listen_host"])}:{html.escape(str(gateway["port"]))}{html.escape(gateway["path"])}
           </div>
+          {health_note}
+          {stale_note}
         </div>
       </div>
     </section>
