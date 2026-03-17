@@ -1,6 +1,7 @@
 from app.agent.chat_agent import (
     AgentBackendConfig,
     DEFAULT_OLLAMA_MODEL,
+    _build_llm_input_messages,
     build_agent_backend_config,
     build_agent_hint,
     generate_agent_reply,
@@ -49,6 +50,9 @@ def _build_context() -> dict:
                 "instance_id": "pc-001",
                 "device_name": "办公室电脑",
                 "category_name": "个人电脑",
+                "template_id": "personal_pc_real",
+                "template_display_name": "个人 PC 真实设备",
+                "source_type": "real",
                 "metrics": [
                     {"metric_id": "cpu_usage", "label": "CPU 使用率", "unit": "%"},
                     {"metric_id": "gpu_usage", "label": "GPU 使用率", "unit": "%"},
@@ -76,12 +80,16 @@ def _build_context() -> dict:
                     {"metrics": {"cpu_usage": 58.0, "gpu_usage": 18.0, "gpu_memory_usage": 41.0}},
                     {"metrics": {"cpu_usage": 66.0, "gpu_usage": 32.0, "gpu_memory_usage": 58.0}},
                 ],
+                "last_heartbeat": "2026-03-16T22:10:00",
                 "report": "示例报告",
             },
             "sgcc-001": {
                 "instance_id": "sgcc-001",
                 "device_name": "配电箱 1",
                 "category_name": "配电设备",
+                "template_id": "sgcc_simulated",
+                "template_display_name": "SGCC 模拟设备",
+                "source_type": "simulated",
                 "metrics": [{"metric_id": "temperature", "label": "温度", "unit": "℃"}],
                 "latest_point": {"device_status": "offline", "metrics": {"temperature": None}},
                 "latest_analysis": {
@@ -92,6 +100,7 @@ def _build_context() -> dict:
                     "issues": [{"message": "设备离线。", "suggestion": "检查通信链路。"}],
                 },
                 "history": [],
+                "last_heartbeat": "2026-03-16T21:40:00",
                 "report": "离线报告",
             },
         },
@@ -161,3 +170,79 @@ def test_build_agent_backend_config_uses_ollama_default_model_when_mode_is_local
 
     assert config.mode == "local_ollama"
     assert config.model == DEFAULT_OLLAMA_MODEL
+
+
+def test_build_llm_input_messages_appends_current_user_message_when_history_exists():
+    messages = _build_llm_input_messages(
+        user_message="这台设备现在怎么样？",
+        context=_build_context(),
+        conversation_history=[{"role": "assistant", "content": "上一轮回答"}],
+    )
+
+    assert messages[-1] == {"role": "user", "content": "这台设备现在怎么样？"}
+
+
+def test_generate_agent_reply_real_llm_uses_dashboard_skill_adapter(monkeypatch):
+    class FakeFunctionCall:
+        type = "function_call"
+        name = "get_dashboard_overview"
+        arguments = '{"focus":"abnormal"}'
+        call_id = "call_1"
+
+    class FakeMessageContent:
+        type = "output_text"
+
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+    class FakeMessage:
+        type = "message"
+
+        def __init__(self, text: str) -> None:
+            self.content = [FakeMessageContent(text)]
+
+    class FakeResponse:
+        def __init__(self, output, output_text: str = "") -> None:
+            self.output = output
+            self.output_text = output_text
+
+    class FakeClient:
+        def __init__(self) -> None:
+            self.calls = []
+            self.responses = self
+
+        def create(self, *, model, input, tools):
+            self.calls.append({"model": model, "input": list(input), "tools": list(tools)})
+            if len(self.calls) == 1:
+                return FakeResponse([FakeFunctionCall()])
+            return FakeResponse([FakeMessage("工具调用完成")], output_text="工具调用完成")
+
+    fake_client = FakeClient()
+    captured = {}
+
+    monkeypatch.setattr("app.agent.chat_agent._create_openai_client", lambda **_: fake_client)
+    monkeypatch.setattr(
+        "app.agent.chat_agent.get_dashboard_skill_definitions",
+        lambda: [{"type": "function", "name": "get_dashboard_overview"}],
+    )
+
+    def _fake_invoke(name, arguments, context):
+        captured["name"] = name
+        captured["arguments"] = arguments
+        captured["context"] = context
+        return {"ok": True, "devices": []}
+
+    monkeypatch.setattr("app.agent.chat_agent.invoke_dashboard_skill", _fake_invoke)
+
+    reply = generate_agent_reply(
+        "当前有哪些异常设备？",
+        _build_context(),
+        backend_config=AgentBackendConfig(mode="real_llm", model="gpt-5.4", use_local_fallback=False),
+        conversation_history=[{"role": "assistant", "content": "上一轮回答"}],
+    )
+
+    assert reply == "工具调用完成"
+    assert captured["name"] == "get_dashboard_overview"
+    assert captured["arguments"] == {"focus": "abnormal"}
+    assert fake_client.calls[0]["tools"][0]["name"] == "get_dashboard_overview"
+    assert {"role": "user", "content": "当前有哪些异常设备？"} in fake_client.calls[0]["input"]

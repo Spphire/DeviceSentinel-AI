@@ -1,6 +1,8 @@
 from scripts.personal_pc_client_app import (
     PersonalPcClientConfig,
     build_arg_parser,
+    build_gateway_preview,
+    compute_retry_delay,
     load_saved_config,
     merge_config_with_args,
     save_config,
@@ -84,3 +86,24 @@ def test_save_and_load_personal_pc_client_app_config(tmp_path, monkeypatch):
     loaded = load_saved_config()
 
     assert loaded == config
+
+
+def test_compute_retry_delay_grows_with_failures_and_caps():
+    assert compute_retry_delay(5, 1) == 5
+    assert compute_retry_delay(5, 2) == 10
+    assert compute_retry_delay(5, 9) == 20
+    assert compute_retry_delay(12, 4) == 30
+
+
+def test_build_gateway_preview_uses_current_config():
+    preview = build_gateway_preview(
+        PersonalPcClientConfig(
+            instance_id="pc-001",
+            gateway_host="192.168.1.15",
+            gateway_port=11570,
+            gateway_path="/telemetry",
+            interval=2,
+        )
+    )
+
+    assert preview == "http://192.168.1.15:11570/telemetry"

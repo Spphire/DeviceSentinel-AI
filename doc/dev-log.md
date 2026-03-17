@@ -5,6 +5,20 @@
 
 ## 2026-03-17
 
+### 聊天主流程 Skill 收敛 + backend smoke test
+
+- `local_rule` 原来还在直接读 `context` 做本地判断，这一轮已经统一改为通过 `dashboard_skill_adapter` 调技能再整形回答
+- `real_llm` 模式的工具定义和工具执行也已经切到同一个 Skill adapter，减少 Tool / Skill 两套入口继续分叉
+- 新增 `scripts/check_agent_backends.py`，可直接在命令行 smoke test `local_rule / real_llm / local_ollama`
+- 当前本机 `openai` 依赖已安装，但没有可用 `OPENAI_API_KEY`，因此 `real_llm` 还只能验证到“配置缺失时的错误路径”
+
+### PC 客户端自动重试与目标网关预览
+
+- 个人 PC GUI 客户端新增“目标网关”显示，能直接看到当前要连的上报地址
+- GUI 端发送失败后不再立刻停掉线程，而是进入自动重试状态并显示失败次数 / 重试延迟
+- headless 模式也补上了自动重试，便于长时间后台运行
+- 为这部分补充测试后，聊天 / adapter / PC client 相关测试已通过
+
 ### backend manager 健康检查收口
 
 - 共享 HTTP 网关补上固定 `/health` 探针接口

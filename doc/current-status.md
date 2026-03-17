@@ -4,14 +4,16 @@
 
 ## 1. 当前阶段
 
-项目当前已经完成到“第二十二阶段”：
+项目当前已经完成到“第二十三阶段”：
 
 - 模板驱动的混合设备监测面板已稳定可用
 - 聊天 Agent 已支持 `local_rule / real_llm / local_ollama`
 - 本机已完成 `Ollama + qwen2.5:7b` 联调
 - 真实设备接入已收敛为“共享 HTTP 网关 + backend manager”
 - backend manager 已补上健康检查、PID 状态识别和遗留状态文件自检
+- 聊天主流程已收敛到 `dashboard_skill_adapter`，本地规则与真实模型 Tool 调用共用同一套 Skill registry
 - 个人 PC 客户端已支持 GUI / headless、Windows EXE 与本地配置缓存
+- 个人 PC 客户端已补上自动重试、目标网关预览和更稳定的连接状态提示
 - 手机端真实设备模板与脚本客户端已接入当前链路，Android APK 客户端工程已落地并可本机构建
 - GitHub 已补上状态摘要发布工作流，可自动发布静态状态页
 - GitHub Projects 文档同步脚本已落地，可把当前计划、上下文和阶段里程碑同步到 Projects v2 看板
@@ -30,6 +32,12 @@ streamlit run streamlit_app.py --server.port 7787
 
 ```bash
 python scripts/run_backend.py
+```
+
+聊天后端 smoke test：
+
+```bash
+python scripts/check_agent_backends.py --backend local_rule --message "这台设备现在怎么样？"
 ```
 
 个人 PC 客户端：
@@ -51,6 +59,8 @@ python scripts/build_mobile_android_apk.py
 - 个人 PC GUI / headless 客户端配置缓存与重启生效
 - 共享网关配置修改后由 backend manager 自动重载
 - backend manager 健康探针、状态文件写入与页面可见性
+- 聊天主流程 Skill adapter 收敛
+- `check_agent_backends.py` 命令行 smoke test
 - 聊天面板本地规则问答
 - 聊天面板本地 `Ollama` 问答
 - 手机端客户端模拟上报
@@ -72,6 +82,7 @@ python scripts/build_mobile_android_apk.py
 | 聊天后端 | `app/agent/chat_agent.py` | `local_rule / real_llm / local_ollama` |
 | Tool 层 | `app/agent/dashboard_tools.py` | 设备查询与趋势分析工具 |
 | MPC Skill 适配 | `app/mpc/dashboard_skill_adapter.py` | Dashboard Tool 的 Skill 风格包装 |
+| 聊天 smoke test | `scripts/check_agent_backends.py` | 快速验证 `local_rule / real_llm / local_ollama` |
 | 客户端共享层 | `app/services/telemetry_client.py` | 真实设备脚本共用的上报与参数解析 |
 | PC GUI 客户端 | `scripts/personal_pc_client_app.py` | 桌面 GUI、曲线展示与 headless 入口 |
 | Android 客户端工程 | `android/mobile-client` | 手机 APK 图形端与 Gradle wrapper |
@@ -94,8 +105,8 @@ python scripts/build_mobile_android_apk.py
 当前更适合继续推进的是：
 
 1. 真实模型模式真正联通可用账号并验证稳定性
-2. 继续收敛 Tool / Skill 两套入口，让聊天主流程统一走 Skill adapter
-3. 继续收敛 Android 真机联调与后台上报稳定性
+2. 继续收敛 Android 真机联调与后台上报稳定性
+3. 继续完善 PC 客户端，例如托盘模式和开机自启动
 4. 在现有共享网关基础上评估 MQTT 补充接入
 
 ## 7. 当前不建议优先动的部分

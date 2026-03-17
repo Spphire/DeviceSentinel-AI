@@ -4,7 +4,7 @@
 
 项目名称：基于 MPC Skill 的电气设备状态监测 AI Agent 系统  
 当前定位：学生级课程设计 / 毕业设计演示系统  
-当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调、PC GUI / Windows EXE / Android APK 客户端交付，以及 GitHub 协作文档、Projects 看板整理和 backend manager 健康自检
+当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调、PC GUI / Windows EXE / Android APK 客户端交付，以及 GitHub 协作文档、Projects 看板整理、backend manager 健康自检和聊天主流程 Skill 收敛
 
 ## 当前能力
 
@@ -255,12 +255,21 @@
 - GitHub 状态快照与静态页同步展示网关健康、PID 存活和遗留状态
 - 补充网关与状态页测试后，`python -m pytest` 全量通过
 
+### 2026-03-17 第二十三阶段
+
+- 将 `local_rule` 的本地问答主流程改为通过 `app/mpc/dashboard_skill_adapter.py` 统一规划和执行
+- `real_llm` 模式的工具定义与工具调用也已经切换到同一个 Skill adapter，减少 Tool / Skill 入口分叉
+- 新增 `scripts/check_agent_backends.py`，可直接用命令行 smoke test `local_rule / real_llm / local_ollama`
+- 当前本机已确认 `openai` 依赖存在，但没有可用 `OPENAI_API_KEY`，因此 `real_llm` 只能验证到配置缺失时的报错路径
+- 个人 PC GUI / headless 客户端新增自动重试、失败次数提示和目标网关预览
+- 为聊天主流程收敛、smoke test 和 PC 客户端自动重试补充测试
+
 ### 2026-03-17 当前待继续工作（含优先级）
 
 - `P2` 真正联通可用的真实模型账号与 API Key，验证页面里的 `real_llm` 模式
 - `P2` 让聊天主流程进一步统一走 `dashboard_skill_adapter`，收敛 Tool / Skill 两套入口，便于后续真正挂接外部 MPC Skill
 - `P2` 继续推进 Android 真机联调，验证锁屏后台、局域网连通和弱网上报表现
-- `P2` 继续产品化个人 PC 客户端，例如自动重连、错误提示和托盘运行
+- `P2` 继续产品化个人 PC 客户端，例如托盘运行、开机自启动和版本提示
 - `P2` 将 backend manager 继续向启动脚本 / 服务化包装推进，减少手动运维操作
 - `P2` 评估是否为真实设备接入增加 `MQTT` 模式，与当前 `HTTP JSON push` 并存；重点比较单机演示复杂度、多设备扩展性、跨主机部署和断线重连体验
 - `P2` 继续优化本地 Ollama / 真实模型提示词，减少无效调用

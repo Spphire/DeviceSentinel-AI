@@ -26,6 +26,7 @@ from scripts.personal_pc_client import collect_metrics
 
 SETTINGS_FILENAME = "personal_pc_client_app.json"
 APP_TITLE = "DeviceSentinel Personal PC Client"
+MAX_RETRY_DELAY_SECONDS = 30
 METRIC_DEFINITIONS = [
     ("cpu_usage", "CPU", "%"),
     ("memory_usage", "内存", "%"),
@@ -137,6 +138,12 @@ def _parse_positive_int(value: str, *, field_name: str, fallback: int) -> int:
     return parsed
 
 
+def compute_retry_delay(interval: int, consecutive_failures: int) -> int:
+    safe_interval = max(1, int(interval))
+    failure_multiplier = min(max(1, int(consecutive_failures)), 4)
+    return min(MAX_RETRY_DELAY_SECONDS, safe_interval * failure_multiplier)
+
+
 def push_metrics(config: PersonalPcClientConfig, *, mode: str) -> tuple[dict[str, float], str]:
     metrics = collect_metrics()
     url = build_gateway_url(
@@ -154,15 +161,37 @@ def push_metrics(config: PersonalPcClientConfig, *, mode: str) -> tuple[dict[str
     return metrics, response
 
 
+def build_gateway_preview(config: PersonalPcClientConfig) -> str:
+    return build_gateway_url(
+        gateway_host=config.gateway_host,
+        gateway_port=config.gateway_port,
+        gateway_path=config.gateway_path,
+    )
+
+
 def run_headless(config: PersonalPcClientConfig, *, once: bool) -> None:
     save_config(config)
+    consecutive_failures = 0
     while True:
-        metrics, response = push_metrics(config, mode="headless")
-        metric_summary = " / ".join(
-            f"{label}={metrics[metric_id]}{unit}" for metric_id, label, unit in METRIC_DEFINITIONS
-        )
-        print(f"[headless] {metric_summary}")
-        print(response)
+        try:
+            metrics, response = push_metrics(config, mode="headless")
+            consecutive_failures = 0
+            metric_summary = " / ".join(
+                f"{label}={metrics[metric_id]}{unit}" for metric_id, label, unit in METRIC_DEFINITIONS
+            )
+            print(f"[headless] {metric_summary}")
+            print(response)
+        except Exception as exc:
+            if once:
+                raise
+            consecutive_failures += 1
+            retry_delay = compute_retry_delay(config.interval, consecutive_failures)
+            print(
+                f"[headless] 上报失败：{exc}；将在 {retry_delay} 秒后自动重试，目标网关 {build_gateway_preview(config)}。",
+                file=sys.stderr,
+            )
+            time.sleep(retry_delay)
+            continue
         if once:
             break
         time.sleep(config.interval)
@@ -186,8 +215,10 @@ class PersonalPcClientApp(tk.Tk):
         self.gateway_path_var = tk.StringVar(value=config.gateway_path)
         self.interval_var = tk.StringVar(value=str(config.interval))
         self.status_var = tk.StringVar(value="待连接")
+        self.gateway_var = tk.StringVar(value=build_gateway_preview(config))
         self.last_push_var = tk.StringVar(value="尚未发送")
         self.response_var = tk.StringVar(value="等待首次上报")
+        self.retry_var = tk.StringVar(value="未触发")
         self.metric_vars = {
             metric_id: tk.StringVar(value="--")
             for metric_id, _, _ in METRIC_DEFINITIONS
@@ -264,13 +295,14 @@ class PersonalPcClientApp(tk.Tk):
 
         status_card = ttk.LabelFrame(meta_card, text="运行状态", padding=14)
         status_card.grid(row=0, column=0, columnspan=2, sticky="ew")
-        status_card.columnconfigure(0, weight=1)
-        status_card.columnconfigure(1, weight=1)
-        status_card.columnconfigure(2, weight=1)
+        for column in range(5):
+            status_card.columnconfigure(column, weight=1)
 
         self._build_status_field(status_card, 0, "连接状态", self.status_var)
-        self._build_status_field(status_card, 1, "最后上报", self.last_push_var)
-        self._build_status_field(status_card, 2, "网关响应", self.response_var)
+        self._build_status_field(status_card, 1, "目标网关", self.gateway_var)
+        self._build_status_field(status_card, 2, "最后上报", self.last_push_var)
+        self._build_status_field(status_card, 3, "网关响应", self.response_var)
+        self._build_status_field(status_card, 4, "自动重试", self.retry_var)
 
         current_card = ttk.LabelFrame(meta_card, text="当前指标", padding=14)
         current_card.grid(row=1, column=0, sticky="nsew", pady=(12, 0), padx=(0, 8))
@@ -313,6 +345,10 @@ class PersonalPcClientApp(tk.Tk):
             variable.trace_add("write", self._persist_form_state)
 
     def _persist_form_state(self, *_args) -> None:
+        try:
+            self.gateway_var.set(build_gateway_preview(self._build_config()))
+        except ValueError:
+            self.gateway_var.set("配置待修正")
         _try_save_current_config(self._build_config)
 
     def _build_status_field(self, parent: ttk.Frame, column: int, label: str, variable: tk.StringVar) -> None:
@@ -351,6 +387,8 @@ class PersonalPcClientApp(tk.Tk):
         save_config(config)
         self.stop_event.clear()
         self.status_var.set("连接中...")
+        self.gateway_var.set(build_gateway_preview(config))
+        self.retry_var.set("未触发")
         self.start_button.config(state="disabled")
         self.stop_button.config(state="normal")
         self.worker_thread = threading.Thread(target=self._worker_loop, args=(config,), daemon=True)
@@ -363,13 +401,16 @@ class PersonalPcClientApp(tk.Tk):
         self.worker_thread = None
         if update_status:
             self.status_var.set("已停止")
+            self.retry_var.set("已停止")
         self.start_button.config(state="normal")
         self.stop_button.config(state="disabled")
 
     def _worker_loop(self, config: PersonalPcClientConfig) -> None:
+        consecutive_failures = 0
         while not self.stop_event.is_set():
             try:
                 metrics, response = push_metrics(config, mode="gui")
+                consecutive_failures = 0
                 self.event_queue.put(
                     {
                         "kind": "metrics",
@@ -378,9 +419,20 @@ class PersonalPcClientApp(tk.Tk):
                         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                     }
                 )
+                wait_seconds = config.interval
             except Exception as exc:
-                self.event_queue.put({"kind": "error", "message": str(exc)})
-            if self.stop_event.wait(config.interval):
+                consecutive_failures += 1
+                wait_seconds = compute_retry_delay(config.interval, consecutive_failures)
+                self.event_queue.put(
+                    {
+                        "kind": "error",
+                        "message": str(exc),
+                        "retry_delay": wait_seconds,
+                        "failure_count": consecutive_failures,
+                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                )
+            if self.stop_event.wait(wait_seconds):
                 break
 
     def _poll_queue(self) -> None:
@@ -399,12 +451,13 @@ class PersonalPcClientApp(tk.Tk):
                 self.last_push_var.set(str(event["timestamp"]))
                 self.response_var.set(str(event["response"]))
                 self.status_var.set("上报中")
+                self.retry_var.set("未触发")
             else:
-                self.status_var.set("上报失败")
+                self.status_var.set("连接异常，自动重试中")
                 self.response_var.set(str(event["message"]))
-                self.start_button.config(state="normal")
-                self.stop_button.config(state="disabled")
-                self.stop_event.set()
+                self.retry_var.set(
+                    f"失败 {event['failure_count']} 次，{event['retry_delay']} 秒后重试"
+                )
         self.after(250, self._poll_queue)
 
     def _render_chart(self, metric_id: str) -> None:

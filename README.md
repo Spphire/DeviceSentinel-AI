@@ -23,6 +23,7 @@
 | 真实大模型接入 | 已支持后端适配 / 待配置 API Key |
 | MPC Skill 平台联调 | 已完成本地 Tool/Skill 适配层 |
 | backend manager | 已支持共享网关托管、健康检查、自恢复与状态快照 |
+| 聊天主流程 | 已统一走 Skill adapter，并支持命令行 smoke test |
 | 客户端 release 打包 | 已支持 PC 脚本 / GUI EXE 与 Android APK 构建 |
 
 ## 文档导航
@@ -92,6 +93,12 @@ set OPENAI_API_KEY=<你的 API Key>
 
 ```bash
 python scripts/publish_status_snapshot.py --owner Spphire --repo DeviceSentinel-AI
+```
+
+如需快速 smoke test 聊天后端，可运行：
+
+```bash
+python scripts/check_agent_backends.py --backend local_rule --message "这台设备现在怎么样？"
 ```
 
 启动页面：
