@@ -182,6 +182,8 @@ class AnalysisResult:
     template_display_name: str | None = None
     category_name: str | None = None
     metric_labels: dict[str, str] | None = None
+    knowledge_references: list[dict[str, Any]] = field(default_factory=list)
+    recommended_actions: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -199,4 +201,6 @@ class AnalysisResult:
             "template_display_name": self.template_display_name,
             "category_name": self.category_name,
             "metric_labels": self.metric_labels,
+            "knowledge_references": self.knowledge_references,
+            "recommended_actions": self.recommended_actions,
         }

@@ -60,6 +60,13 @@ def _build_context() -> dict:
                     "status": "warning",
                     "risk_level": "high",
                     "summary": "检测到设备负载偏高，建议继续关注资源变化。",
+                    "recommended_actions": ["建议检查图形或 AI 任务负载。"],
+                    "knowledge_references": [
+                        {
+                            "title": "GPU 高负载排查",
+                            "source_title": "内部知识库",
+                        }
+                    ],
                     "issues": [
                         {
                             "message": "GPU 使用率达到 32.0%，超过示例阈值。",
@@ -122,3 +129,4 @@ def test_generate_local_skill_reply_for_issue_analysis():
     assert "办公室电脑" in reply
     assert "最值得关注的问题和建议" in reply
     assert "建议检查图形或 AI 任务负载" in reply
+    assert "知识依据" in reply

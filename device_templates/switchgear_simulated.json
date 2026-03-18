@@ -1,0 +1,45 @@
+{
+  "template_id": "switchgear_simulated",
+  "display_name": "10kV 开关柜（模拟）",
+  "category_name": "开关柜设备",
+  "source_type": "simulated",
+  "metrics": [
+    { "metric_id": "contact_temperature", "label": "触头温度", "unit": "℃", "precision": 1 },
+    { "metric_id": "cabinet_temperature", "label": "柜内温度", "unit": "℃", "precision": 1 },
+    { "metric_id": "load_current", "label": "负荷电流", "unit": "A", "precision": 1 }
+  ],
+  "simulation": {
+    "kind": "switchgear",
+    "profile_options": [
+      { "id": "stable", "label": "常规巡检型" },
+      { "id": "contact_overheating", "label": "接头过热型" },
+      { "id": "load_transfer_stress", "label": "倒负荷应力型" },
+      { "id": "compound", "label": "复合异常型" },
+      { "id": "offline", "label": "离线型" }
+    ]
+  },
+  "analysis": {
+    "kind": "threshold",
+    "summary_normal": "开关柜温升与负荷整体平稳，当前未见明显热缺陷特征。",
+    "metric_rules": {
+      "contact_temperature": {
+        "high": 70,
+        "severity": "high",
+        "label": "触头温度",
+        "suggestion": "建议立即开展红外测温与接点紧固复核，排查触头过热缺陷。"
+      },
+      "cabinet_temperature": {
+        "high": 38,
+        "severity": "medium",
+        "label": "柜内温度",
+        "suggestion": "建议检查柜内通风散热与环境温升，防止热量积聚。"
+      },
+      "load_current": {
+        "high": 320,
+        "severity": "medium",
+        "label": "负荷电流",
+        "suggestion": "建议核查近期倒负荷或高峰转供情况，必要时分流减载。"
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "template_id": "distribution_transformer_simulated",
+  "display_name": "配变台区终端（模拟）",
+  "category_name": "配变台区设备",
+  "source_type": "simulated",
+  "metrics": [
+    { "metric_id": "voltage", "label": "末端电压", "unit": "V", "precision": 1 },
+    { "metric_id": "current", "label": "运行电流", "unit": "A", "precision": 1 },
+    { "metric_id": "load_rate", "label": "负载率", "unit": "%", "precision": 1 },
+    { "metric_id": "imbalance_ratio", "label": "三相不平衡率", "unit": "%", "precision": 1 }
+  ],
+  "simulation": {
+    "kind": "distribution_transformer",
+    "profile_options": [
+      { "id": "stable", "label": "平稳供电型" },
+      { "id": "low_voltage_unbalance", "label": "低电压/三相不平衡" },
+      { "id": "heavy_overload", "label": "重过载型" },
+      { "id": "compound", "label": "复合异常型" },
+      { "id": "offline", "label": "离线型" }
+    ]
+  },
+  "analysis": {
+    "kind": "threshold",
+    "summary_normal": "台区电压质量与负荷分配整体稳定。",
+    "metric_rules": {
+      "voltage": {
+        "low": 207,
+        "severity": "medium",
+        "label": "末端电压",
+        "suggestion": "建议排查供电半径、线路压降与台区转供空间。"
+      },
+      "current": {
+        "high": 110,
+        "severity": "medium",
+        "label": "运行电流",
+        "suggestion": "建议核查峰值负荷、分支回路和保护动作记录。"
+      },
+      "load_rate": {
+        "high": 85,
+        "severity": "high",
+        "label": "负载率",
+        "suggestion": "建议评估配变重过载风险，必要时安排转供、削峰或增容。"
+      },
+      "imbalance_ratio": {
+        "high": 15,
+        "severity": "medium",
+        "label": "三相不平衡率",
+        "suggestion": "建议开展分相调负与台区负荷复测，降低末端低电压风险。"
+      }
+    }
+  }
+}

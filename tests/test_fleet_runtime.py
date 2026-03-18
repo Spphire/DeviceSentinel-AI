@@ -8,18 +8,18 @@ def test_fleet_runtime_supports_mixed_simulated_templates():
     configs = [
         build_device_config(
             {
-                "instance_id": "sgcc-001",
-                "name": "SGCC 设备 1",
-                "template_id": "sgcc_simulated",
-                "simulation_profile": "stable",
+                "instance_id": "switchgear-001",
+                "name": "开关柜 1",
+                "template_id": "switchgear_simulated",
+                "simulation_profile": "contact_overheating",
             }
         ),
         build_device_config(
             {
-                "instance_id": "temp-001",
-                "name": "温湿度设备 1",
-                "template_id": "temp_humidity_simulated",
-                "simulation_profile": "intermittent_fault",
+                "instance_id": "transformer-001",
+                "name": "配变终端 1",
+                "template_id": "distribution_transformer_simulated",
+                "simulation_profile": "low_voltage_unbalance",
             }
         ),
     ]
@@ -27,13 +27,15 @@ def test_fleet_runtime_supports_mixed_simulated_templates():
     runtime = DeviceFleetRuntime(templates=templates, device_configs=configs, seed=11)
     runtime.step()
 
-    sgcc_snapshot = runtime.get_device_snapshot("sgcc-001")
-    sensor_snapshot = runtime.get_device_snapshot("temp-001")
+    switchgear_snapshot = runtime.get_device_snapshot("switchgear-001")
+    transformer_snapshot = runtime.get_device_snapshot("transformer-001")
 
-    assert sgcc_snapshot["point"] is not None
-    assert sensor_snapshot["point"] is not None
-    assert "temperature" in sgcc_snapshot["point"].metrics
-    assert "humidity" in sensor_snapshot["point"].metrics
+    assert switchgear_snapshot["point"] is not None
+    assert transformer_snapshot["point"] is not None
+    assert "contact_temperature" in switchgear_snapshot["point"].metrics
+    assert "imbalance_ratio" in transformer_snapshot["point"].metrics
+    assert switchgear_snapshot["analysis"]["knowledge_references"]
+    assert transformer_snapshot["analysis"]["knowledge_references"]
 
 
 def test_real_template_without_events_starts_offline():

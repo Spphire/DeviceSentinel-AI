@@ -34,22 +34,22 @@ DEFAULT_SETTINGS = {
     },
     "devices": [
         {
-            "instance_id": "sgcc-demo-001",
-            "name": "SGCC 配电箱 1",
-            "template_id": "sgcc_simulated",
-            "simulation_profile": "stable",
+            "instance_id": "switchgear-demo-001",
+            "name": "10kV 开关柜 A",
+            "template_id": "switchgear_simulated",
+            "simulation_profile": "contact_overheating",
         },
         {
-            "instance_id": "sgcc-demo-002",
-            "name": "SGCC 配电箱 2",
+            "instance_id": "transformer-demo-001",
+            "name": "台区配变终端 A",
+            "template_id": "distribution_transformer_simulated",
+            "simulation_profile": "low_voltage_unbalance",
+        },
+        {
+            "instance_id": "sgcc-demo-001",
+            "name": "馈线终端 A",
             "template_id": "sgcc_simulated",
             "simulation_profile": "intermittent_fault",
-        },
-        {
-            "instance_id": "temp-demo-001",
-            "name": "温湿度传感器 1",
-            "template_id": "temp_humidity_simulated",
-            "simulation_profile": "stable",
         },
     ],
 }

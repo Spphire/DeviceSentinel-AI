@@ -43,6 +43,36 @@ def _format_metric_summary(analysis_result: dict, metric_definitions: list[dict]
     return "，".join(parts) if parts else "暂无有效指标数据"
 
 
+def _format_knowledge_section(analysis_result: dict) -> str:
+    references = analysis_result.get("knowledge_references") or []
+    actions = analysis_result.get("recommended_actions") or []
+    if not references and not actions:
+        return ""
+
+    lines: list[str] = []
+    if actions:
+        lines.append(
+            "知识增强处置建议："
+            + "".join(f"\n{index}. {action}" for index, action in enumerate(actions[:4], start=1))
+        )
+
+    if references:
+        knowledge_lines = []
+        for index, reference in enumerate(references[:3], start=1):
+            source_title = reference.get("source_title") or "公开资料"
+            source_url = reference.get("source_url") or ""
+            summary = reference.get("summary") or reference.get("scenario") or ""
+            if source_url:
+                knowledge_lines.append(
+                    f"{index}. {reference['title']}：{summary} 来源：{source_title}（{source_url}）"
+                )
+            else:
+                knowledge_lines.append(f"{index}. {reference['title']}：{summary} 来源：{source_title}")
+        lines.append("知识依据：\n" + "\n".join(knowledge_lines))
+
+    return "\n".join(lines)
+
+
 def generate_report(analysis_result: dict, metric_definitions: list[dict] | None = None) -> str:
     issues = analysis_result.get("issues", [])
     device_id = analysis_result.get("device_id", "UNKNOWN")
@@ -54,6 +84,7 @@ def generate_report(analysis_result: dict, metric_definitions: list[dict] | None
     last_heartbeat = analysis_result.get("last_heartbeat")
     status_label = STATUS_LABELS.get(status, status)
     risk_label = RISK_LABELS.get(risk_level, risk_level)
+    knowledge_section = _format_knowledge_section(analysis_result)
 
     if device_status == "offline" or status == "offline":
         header = (
@@ -73,7 +104,11 @@ def generate_report(analysis_result: dict, metric_definitions: list[dict] | None
             f"规范依据：本报告引用 {STANDARD_REFERENCE['code']} 相关运维表述进行规范化生成，"
             "可作为教学演示与课程设计样例。"
         )
-        return f"{header}\n{body}\n{footer}"
+        sections = [header, body]
+        if knowledge_section:
+            sections.append(knowledge_section)
+        sections.append(footer)
+        return "\n".join(sections)
 
     header = (
         f"设备名称：{device_name}\n"
@@ -105,5 +140,8 @@ def generate_report(analysis_result: dict, metric_definitions: list[dict] | None
         f"规范依据：本报告引用 {STANDARD_REFERENCE['code']} 相关运维表述进行规范化生成，"
         "可作为教学演示与课程设计样例。"
     )
-
-    return f"{header}\n{body}\n{footer}"
+    sections = [header, body]
+    if knowledge_section:
+        sections.append(knowledge_section)
+    sections.append(footer)
+    return "\n".join(sections)

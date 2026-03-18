@@ -4,13 +4,15 @@
 
 项目名称：基于 MPC Skill 的电气设备状态监测 AI Agent 系统  
 当前定位：学生级课程设计 / 毕业设计演示系统  
-当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调、PC GUI / Windows EXE / Android APK 客户端交付，以及 GitHub 协作文档、Projects 看板整理、backend manager 健康自检、聊天主流程 Skill 收敛和 PC 客户端产品化增强
+当前阶段：已完成模板驱动设备面板、模拟与真实设备混合接入、本地持久化配置、规则分析、本地聊天 Agent、真实模型适配层、本地 7B 模型部署与联调、PC GUI / Windows EXE / Android APK 客户端交付，以及 GitHub 协作文档、Projects 看板整理、backend manager 健康自检、聊天主流程 Skill 收敛、PC 客户端产品化增强和第一版电力知识库增强
 
 ## 当前能力
 
 - 支持模板驱动的设备类型加载，模板目录位于 [device_templates](device_templates)
 - 支持的模板：
   - `sgcc_simulated`：SGCC 模拟设备
+  - `switchgear_simulated`：10kV 开关柜模拟设备
+  - `distribution_transformer_simulated`：配变台区终端模拟设备
   - `personal_pc_real`：个人 PC 真实设备
   - `mobile_device_real`：手机真实设备
   - `temp_humidity_simulated`：温湿度模拟设备
@@ -27,6 +29,8 @@
   - `local_ollama`：本地 Ollama 模型回答
 - 真实模型模式支持失败自动回退到本地规则
 - 已整理模板感知的设备查询 Tool / Skill 接口，可供本地规则、真实模型和后续 MPC Skill 复用
+- 已新增第一版电力运维知识库，可按设备模板、故障标签和指标条件匹配知识依据
+- 单设备详情、报告和聊天输出，现可展示知识来源和优先处置动作
 - 已在本机成功部署 `Ollama + qwen2.5:7b`，可直接用于页面聊天区
 - 设置支持本地保存，文件路径：
   - [storage/dashboard_settings.json](storage/dashboard_settings.json)
@@ -59,6 +63,8 @@
 - 聊天后端适配：`app/agent/chat_agent.py`
 - 设备查询 Tool：`app/agent/dashboard_tools.py`
 - MPC Skill 适配：`app/mpc/dashboard_skill_adapter.py`
+- 电力知识库：`knowledge_base/power_operation_knowledge.json`
+- 电力知识检索：`app/services/power_knowledge_service.py`
 - 共享网关服务：`app/services/gateway_service.py`
 - 后端管理主程序：`scripts/run_backend.py`
 - 后端管理包装脚本：`scripts/manage_backend.py`
@@ -279,9 +285,20 @@
 - 个人 PC release 构建补上最小化启动脚本，并重新输出新的脚本包和 EXE
 - 为 autostart helper、backend wrapper 和 release 启动器补充测试
 
-### 2026-03-17 当前待继续工作（含优先级）
+### 2026-03-19 第二十五阶段
 
-- `P2` 真正联通可用的真实模型账号与 API Key，验证页面里的 `real_llm` 模式
+- 新增 `knowledge_base/power_operation_knowledge.json`，沉淀第一版公开电力运维知识条目与来源链接
+- 新增 `app/services/power_knowledge_service.py`，按模板、故障标签、分析状态和指标条件匹配知识依据
+- `app/analysis/template_analyzer.py` 现会把知识依据和推荐动作注入结构化分析结果
+- `app/agent/report_generator.py`、`app/mpc/dashboard_skill_adapter.py` 与页面详情区已接入知识增强输出
+- 新增 `switchgear_simulated` 和 `distribution_transformer_simulated` 两类更贴近配电运维的模拟模板
+- 默认演示配置已改为“开关柜过热 + 台区低电压/三相不平衡 + 馈线终端”的组合
+- 修复 `storage/dashboard_settings.json` 后完成运行验证，`python -m pytest` 当前为 `76 passed`
+
+### 2026-03-19 当前待继续工作（含优先级）
+
+- `P2` 扩充电力知识库到更完整的缺陷案例、SOP 和运维文书模板
+- `P2` 真正联通可用的真实模型账号与 API Key，验证页面里的 `real_llm` 模式和知识增强回答
 - `P2` 继续推进 Android 真机联调，验证锁屏后台、局域网连通和弱网上报表现
 - `P2` 继续产品化个人 PC 客户端，例如版本提示和本地日志入口
 - `P2` 继续增强移动端客户端的连接状态与本地说明

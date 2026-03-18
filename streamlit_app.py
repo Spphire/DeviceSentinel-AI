@@ -643,6 +643,33 @@ def _refresh_cached_report(device_id: str, latest_analysis: dict | None, templat
     return st.session_state.report_cache[device_id]
 
 
+def _render_knowledge_panel(latest_analysis: dict | None) -> None:
+    references = [] if latest_analysis is None else latest_analysis.get("knowledge_references", [])
+    actions = [] if latest_analysis is None else latest_analysis.get("recommended_actions", [])
+
+    st.subheader("知识依据与处置建议")
+    if not references and not actions:
+        st.info("当前没有匹配到额外的电力运维知识条目。")
+        return
+
+    if actions:
+        st.caption("优先动作")
+        for index, action in enumerate(actions[:4], start=1):
+            st.markdown(f"{index}. {action}")
+
+    if references:
+        st.caption("知识条目")
+        for reference in references[:3]:
+            source_title = reference.get("source_title") or "公开资料"
+            source_url = reference.get("source_url")
+            title = reference.get("title") or "未命名知识"
+            summary = reference.get("summary") or reference.get("scenario") or ""
+            if source_url:
+                st.markdown(f"**{title}**  \n{summary}  \n来源：[{source_title}]({source_url})")
+            else:
+                st.markdown(f"**{title}**  \n{summary}  \n来源：{source_title}")
+
+
 st.set_page_config(page_title="电气设备状态监测 AI Agent", layout="wide", initial_sidebar_state="collapsed")
 _initialize_state()
 
@@ -783,6 +810,14 @@ def render_dashboard() -> None:
                     st.info("暂无数据")
                 else:
                     st.line_chart(history_frame[[metric.label]], height=220, use_container_width=True)
+
+    report = _refresh_cached_report(selected_device_id, latest_analysis, template)
+    analysis_col, knowledge_col = st.columns([1.25, 1.0])
+    with analysis_col:
+        st.subheader("AI 运维分析卡")
+        st.markdown(f"<div class='summary-card'>{html.escape(report)}</div>", unsafe_allow_html=True)
+    with knowledge_col:
+        _render_knowledge_panel(latest_analysis)
 
     agent_context = build_agent_context(
         runtime=runtime,

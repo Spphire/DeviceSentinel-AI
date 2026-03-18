@@ -5,6 +5,27 @@ from __future__ import annotations
 from app.analysis.analyzer import analyze_device_status
 from app.config.thresholds import STANDARD_REFERENCE
 from app.models import AnalysisIssue, AnalysisResult, DeviceReading, DeviceTelemetryPoint, DeviceTemplateDefinition
+from app.services.power_knowledge_service import collect_recommended_actions, retrieve_power_knowledge
+
+
+def _enrich_with_power_knowledge(
+    template: DeviceTemplateDefinition,
+    point: DeviceTelemetryPoint,
+    result: AnalysisResult,
+) -> AnalysisResult:
+    references = retrieve_power_knowledge(template=template, point=point, analysis_result=result)
+    if not references:
+        return result
+
+    result.knowledge_references = references
+    result.recommended_actions = collect_recommended_actions(references)
+    if result.status != "normal":
+        top_reference = references[0]
+        summary_hint = f"知识库匹配到“{top_reference['title']}”场景。"
+        if result.recommended_actions:
+            summary_hint += f" 建议优先执行：{result.recommended_actions[0]}"
+        result.summary = f"{result.summary} {summary_hint}".strip()
+    return result
 
 
 def _build_offline_result(
@@ -19,7 +40,7 @@ def _build_offline_result(
         suggestion="建议检查设备供电、通信链路、采集程序或上报服务是否正常运行。",
         standard_reference=STANDARD_REFERENCE["code"],
     )
-    return AnalysisResult(
+    result = AnalysisResult(
         device_id=point.instance_id,
         status="offline",
         risk_level="high",
@@ -34,6 +55,7 @@ def _build_offline_result(
         category_name=template.category_name,
         metric_labels=point.metric_labels,
     )
+    return _enrich_with_power_knowledge(template=template, point=point, result=result)
 
 
 def _build_threshold_message(label: str, value: float, threshold: float, direction: str, unit: str) -> str:
@@ -92,7 +114,7 @@ def _analyze_threshold_template(
         risk_level = "high" if high_severity_count or len(issues) > 1 else "medium"
         summary = "检测到设备存在运行异常，建议结合现场环境或终端状态尽快复核。"
 
-    return AnalysisResult(
+    result = AnalysisResult(
         device_id=point.instance_id,
         status=status,
         risk_level=risk_level,
@@ -107,6 +129,7 @@ def _analyze_threshold_template(
         category_name=template.category_name,
         metric_labels=point.metric_labels,
     )
+    return _enrich_with_power_knowledge(template=template, point=point, result=result)
 
 
 def _analyze_sgcc_template(template: DeviceTemplateDefinition, point: DeviceTelemetryPoint) -> AnalysisResult:
@@ -125,7 +148,7 @@ def _analyze_sgcc_template(template: DeviceTemplateDefinition, point: DeviceTele
     result.category_name = template.category_name
     result.metric_labels = point.metric_labels
     result.last_heartbeat = point.timestamp
-    return result
+    return _enrich_with_power_knowledge(template=template, point=point, result=result)
 
 
 def analyze_device_point(

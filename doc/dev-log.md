@@ -3,6 +3,48 @@
 这份文档面向 GitHub 协作阅读，记录最近一段时间的重要决策和里程碑。  
 更完整的长历史仍以根目录 [`../DEVELOPMENT_HISTORY.md`](../DEVELOPMENT_HISTORY.md) 为准。
 
+## 2026-03-19
+
+### 电力知识库增强 + 知识型模拟场景
+
+- 新增 `knowledge_base/power_operation_knowledge.json`，沉淀第一版公开电力运维知识条目
+- 新增 `app/services/power_knowledge_service.py`，按模板、故障标签、分析结果和指标条件匹配知识依据
+- `template_analyzer.py` 现可在结构化分析结果中附带：
+  - `knowledge_references`
+  - `recommended_actions`
+- `report_generator.py` 现会输出“知识增强处置建议”和“知识依据”
+- 聊天本地规则 / Tool / Skill 输出现可引用知识条目标题和来源
+- 页面单设备详情新增“AI 运维分析卡”和“知识依据与处置建议”面板
+
+### 更贴近配电运维的模拟模板
+
+- 新增 `switchgear_simulated`：
+  - 触头温度
+  - 柜内温度
+  - 负荷电流
+- 新增 `distribution_transformer_simulated`：
+  - 末端电压
+  - 运行电流
+  - 负载率
+  - 三相不平衡率
+- 当前默认演示设备切成了：
+  - `10kV 开关柜 A`
+  - `台区配变终端 A`
+  - `馈线终端 B`
+  - `个人 PC`
+  - `手机端`
+- 重点是让模拟场景能和知识库直接对得上，而不是只靠泛化阈值告警
+
+### 运行与验证
+
+- 修复了 `storage/dashboard_settings.json` 的语法错误，并重启页面与 backend manager
+- 当前 `python -m pytest` 全量通过，结果 `76 passed`
+- 已验证：
+  - 开关柜接头过热场景可命中知识条目
+  - 配变低电压 / 三相不平衡场景可命中知识条目
+  - 本地规则聊天会给出知识依据和优先处置步骤
+  - 页面与共享网关均可正常启动
+
 ## 2026-03-17
 
 ### PC 客户端托盘 / 开机自启动 + backend manager 包装脚本

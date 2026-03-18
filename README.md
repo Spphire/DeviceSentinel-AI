@@ -4,6 +4,7 @@
 
 - 模拟设备与真实设备混合接入
 - 本地规则分析与 AI 风格总结
+- 电力运维知识增强分析、依据引用与处置建议
 - Streamlit 可视化面板
 - 本地持久化设置
 - 个人 PC、手机端与温湿度真实设备客户端
@@ -25,6 +26,7 @@
 | backend manager | 已支持共享网关托管、健康检查、自恢复与状态快照 |
 | 聊天主流程 | 已统一走 Skill adapter，并支持命令行 smoke test |
 | 客户端 release 打包 | 已支持 PC 脚本 / GUI EXE（含托盘/自启动）与 Android APK 构建 |
+| 电力知识库增强 | 已完成第一版知识条目、检索匹配、报告与聊天接入 |
 
 ## 文档导航
 
@@ -52,15 +54,18 @@
 ```mermaid
 flowchart LR
     A["设备模板配置<br/>device_templates/*.json"] --> B["运行时编排<br/>fleet_runtime.py"]
-    B --> C["模拟设备引擎<br/>SGCC / 温湿度"]
+    B --> C["模拟设备引擎<br/>开关柜 / 配变 / SGCC / 温湿度"]
     B --> D["真实设备接入<br/>Shared HTTP Telemetry Gateway"]
     C --> E["模板感知分析<br/>template_analyzer.py"]
     D --> E
-    E --> F["本地 AI 风格总结<br/>report_generator.py"]
+    E --> K["电力知识匹配<br/>power_knowledge_service.py"]
+    K --> F["知识增强报告<br/>report_generator.py"]
+    K --> H["聊天 / Skill 上下文<br/>chat_agent.py"]
     E --> G["Streamlit 可视化面板<br/>streamlit_app.py"]
     F --> G
     I["后端管理主程序<br/>scripts/manage_backend.py / run_backend.py"] --> D
-    E --> H["后续扩展<br/>MPC Skill / 大模型对话"]
+    H --> G
+    E --> J["后续扩展<br/>MPC Skill / 大模型对话"]
 ```
 
 ## 当前支持的设备模板
@@ -68,10 +73,19 @@ flowchart LR
 | 模板 ID | 类型 | 数据来源 | 主要指标 |
 | --- | --- | --- | --- |
 | `sgcc_simulated` | SGCC 配电设备 | 模拟 | 温度 / 电压 / 电流 |
+| `switchgear_simulated` | 10kV 开关柜 | 模拟 | 触头温度 / 柜内温度 / 负荷电流 |
+| `distribution_transformer_simulated` | 配变台区终端 | 模拟 | 末端电压 / 运行电流 / 负载率 / 三相不平衡率 |
 | `personal_pc_real` | 个人 PC | 真实设备 | CPU / 内存 / 磁盘活动率 / GPU / GPU 显存 |
 | `mobile_device_real` | 手机 | 真实设备 | 电量 / 电池温度 / 内存 / 存储 |
 | `temp_humidity_simulated` | 温湿度设备 | 模拟 | 温度 / 湿度 |
 | `temp_humidity_real` | 温湿度设备 | 真实设备 | 温度 / 湿度 |
+
+当前默认演示设备已经切成更贴近配电运维的组合：
+
+- `10kV 开关柜 A`：接头过热型
+- `台区配变终端 A`：低电压 / 三相不平衡型
+- `馈线终端 B`：偶发异常型
+- `个人 PC` 与 `手机端` 真实设备仍可并行接入共享网关
 
 ## 快速开始
 

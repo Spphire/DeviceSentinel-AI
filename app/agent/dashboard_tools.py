@@ -20,6 +20,11 @@ COMMON_METRIC_SYNONYMS = {
     "voltage": ["电压"],
     "current": ["电流", "current"],
     "humidity": ["湿度"],
+    "load_rate": ["负载率", "load", "重过载"],
+    "imbalance_ratio": ["三相不平衡", "不平衡率", "相不平衡"],
+    "contact_temperature": ["触头温度", "触点温度", "接头温度", "发热点温度"],
+    "cabinet_temperature": ["柜内温度", "柜温"],
+    "load_current": ["负荷电流", "回路电流"],
     "cpu_usage": ["cpu", "处理器", "cpu使用率", "cpu占用"],
     "memory_usage": ["内存", "memory", "ram"],
     "disk_activity": ["磁盘", "disk", "磁盘活动", "磁盘活动率"],
@@ -338,6 +343,8 @@ def _tool_get_device_detail(arguments: dict[str, Any], context: dict[str, Any]) 
             "supported_metrics": metric_definitions,
             "summary": analysis.get("summary") or "当前暂无可展示的分析结果。",
             "report": device.get("report") or "当前暂无可展示的分析结果。",
+            "knowledge_references": analysis.get("knowledge_references", []),
+            "recommended_actions": analysis.get("recommended_actions", []),
         },
     }
 
@@ -392,6 +399,8 @@ def _tool_get_device_issue_analysis(arguments: dict[str, Any], context: dict[str
             "risk_level": RISK_LABELS.get(analysis.get("risk_level", "unknown"), "未知"),
         },
         "summary": analysis.get("summary") or "当前没有识别到明显异常。",
+        "knowledge_references": analysis.get("knowledge_references", []),
+        "recommended_actions": analysis.get("recommended_actions", []),
         "issues": [
             {
                 "message": issue["message"],

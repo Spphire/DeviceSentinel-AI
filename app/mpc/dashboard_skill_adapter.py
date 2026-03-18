@@ -217,6 +217,17 @@ def _format_issue_reply(result: dict[str, Any]) -> str:
     lines = ["我整理了当前最值得关注的问题和建议："]
     for index, issue in enumerate(issues[:3], start=1):
         lines.append(f"{index}. {issue['message']} 建议：{issue['suggestion']}")
+    recommended_actions = result.get("recommended_actions") or []
+    if recommended_actions:
+        lines.append("知识增强建议：")
+        for index, action in enumerate(recommended_actions[:3], start=1):
+            lines.append(f"{index}. {action}")
+    references = result.get("knowledge_references") or []
+    if references:
+        lines.append("知识依据：")
+        for index, reference in enumerate(references[:2], start=1):
+            source_title = reference.get("source_title") or "公开资料"
+            lines.append(f"{index}. {reference['title']}（来源：{source_title}）")
     return "\n".join(lines)
 
 

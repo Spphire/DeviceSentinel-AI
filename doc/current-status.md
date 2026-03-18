@@ -1,10 +1,10 @@
 # 当前状态
 
-最后更新：2026-03-17
+最后更新：2026-03-19
 
 ## 1. 当前阶段
 
-项目当前已经完成到“第二十四阶段”：
+项目当前已经完成到“第二十五阶段”：
 
 - 模板驱动的混合设备监测面板已稳定可用
 - 聊天 Agent 已支持 `local_rule / real_llm / local_ollama`
@@ -15,6 +15,10 @@
 - 个人 PC 客户端已支持 GUI / headless、Windows EXE、本地配置缓存、托盘与开机自启动
 - 个人 PC 客户端已补上自动重试、目标网关预览和更稳定的连接状态提示
 - 手机端真实设备模板与脚本客户端已接入当前链路，Android APK 客户端工程已落地并可本机构建
+- 已新增第一版电力运维知识库，并完成本地检索匹配、依据引用和推荐动作聚合
+- 单设备详情页已新增“AI 运维分析卡”和“知识依据与处置建议”面板
+- 聊天与报告现可输出知识条目标题、来源和优先处置步骤
+- 演示模板已新增 `10kV 开关柜（模拟）` 与 `配变台区终端（模拟）`
 - GitHub 已补上状态摘要发布工作流，可自动发布静态状态页
 - GitHub Projects 文档同步脚本已落地，可把当前计划、上下文和阶段里程碑同步到 Projects v2 看板
 - GitHub Projects 当前已按收工状态整理，既有阶段节点已统一标记为 `Done`
@@ -65,6 +69,8 @@ python scripts/build_mobile_android_apk.py
 - `manage_backend.py` 一键启动 / 停止 / 状态查看
 - 聊天面板本地规则问答
 - 聊天面板本地 `Ollama` 问答
+- 电力知识增强分析、知识依据展示与聊天引用
+- 开关柜接头过热 / 台区低电压三相不平衡场景模拟
 - 手机端客户端模拟上报
 - Android 手机客户端 debug APK 本机构建
 - GitHub 状态摘要静态页本地构建
@@ -85,6 +91,8 @@ python scripts/build_mobile_android_apk.py
 | 聊天后端 | `app/agent/chat_agent.py` | `local_rule / real_llm / local_ollama` |
 | Tool 层 | `app/agent/dashboard_tools.py` | 设备查询与趋势分析工具 |
 | MPC Skill 适配 | `app/mpc/dashboard_skill_adapter.py` | Dashboard Tool 的 Skill 风格包装 |
+| 电力知识库 | `knowledge_base/power_operation_knowledge.json` | 公开电力运维知识条目与来源链接 |
+| 知识检索服务 | `app/services/power_knowledge_service.py` | 按指标、故障标签和分析结果匹配知识条目 |
 | 聊天 smoke test | `scripts/check_agent_backends.py` | 快速验证 `local_rule / real_llm / local_ollama` |
 | 客户端共享层 | `app/services/telemetry_client.py` | 真实设备脚本共用的上报与参数解析 |
 | PC GUI 客户端 | `scripts/personal_pc_client_app.py` | 桌面 GUI、曲线展示与 headless 入口 |
@@ -100,6 +108,7 @@ python scripts/build_mobile_android_apk.py
 - 本地模型默认：`qwen2.5:7b`
 - 共享网关默认：`127.0.0.1:10570/telemetry`
 - 真实设备区分方式：请求体中的 `instance_id`
+- 默认演示设备：`10kV 开关柜 A / 台区配变终端 A / 馈线终端 B / 个人 PC / 手机端`
 - 个人 PC 指标：`CPU / 内存 / 磁盘活动率 / GPU / GPU 显存占用率`
 - 手机端指标：`电量 / 电池温度 / 内存使用率 / 存储使用率`
 
@@ -107,10 +116,10 @@ python scripts/build_mobile_android_apk.py
 
 当前更适合继续推进的是：
 
-1. 真实模型模式真正联通可用账号并验证稳定性
-2. 继续收敛 Android 真机联调与后台上报稳定性
-3. 继续完善 PC 客户端，例如版本提示和本地日志入口
-4. 在现有共享网关基础上评估 MQTT 补充接入
+1. 继续扩展电力知识库到更完整的缺陷案例、SOP 和运维文书模板
+2. 真实模型模式真正联通可用账号并验证知识增强后的回答稳定性
+3. 继续收敛 Android 真机联调与后台上报稳定性
+4. 继续完善 PC 客户端，例如版本提示和本地日志入口
 
 ## 7. 当前不建议优先动的部分
 

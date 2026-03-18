@@ -257,6 +257,7 @@ def _build_llm_input_messages(
         "你是电气设备状态监测 AI Agent，需要使用工具获取当前面板里的实时设备信息。"
         "禁止编造设备状态、异常原因或指标值。"
         "回答使用中文，先给结论，再给依据和建议。"
+        "如果工具返回 knowledge_references 或 recommended_actions，请优先引用知识标题、来源和处置步骤。"
         "如果工具返回未匹配设备、数据不足或无异常，就如实说明。"
     )
     context_message = (
@@ -409,6 +410,11 @@ def _build_ollama_context_snapshot(context: dict) -> str:
         metric_definitions = device.get("metrics", [])
         metrics_text = build_metric_summary(point.get("metrics", {}), metric_definitions) or "-"
         issue_text = "；".join(issue.get("message", "") for issue in analysis.get("issues", [])[:3]) or "无明显异常"
+        knowledge_text = "；".join(
+            reference.get("title", "")
+            for reference in analysis.get("knowledge_references", [])[:2]
+            if reference.get("title")
+        ) or "无"
 
         lines.append(
             (
@@ -417,7 +423,7 @@ def _build_ollama_context_snapshot(context: dict) -> str:
                 f"诊断状态 {STATUS_LABELS.get(analysis.get('status', 'unknown'), '未知')}，"
                 f"风险等级 {RISK_LABELS.get(analysis.get('risk_level', 'unknown'), '未知')}，"
                 f"最新指标 {metrics_text}，摘要 {analysis.get('summary') or '暂无摘要'}，"
-                f"问题 {issue_text}。"
+                f"问题 {issue_text}，知识依据 {knowledge_text}。"
             )
         )
 

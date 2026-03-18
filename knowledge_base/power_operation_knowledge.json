@@ -1,0 +1,120 @@
+[
+  {
+    "knowledge_id": "switchgear_contact_overheat",
+    "title": "开关柜接头过热与红外测温复核",
+    "scenario": "触头/母排连接点温升异常",
+    "summary": "当开关柜触头、母排或电缆连接点出现明显温升时，应结合红外测温和专项巡视复核发热点位置、负荷变化与通风散热条件，避免缺陷继续演化。",
+    "applicable_templates": ["switchgear_simulated", "sgcc_simulated"],
+    "applicable_simulation_kinds": ["switchgear", "sgcc"],
+    "match": {
+      "fault_labels": ["contact_overheating", "over_temperature", "compound"],
+      "issue_categories": ["temperature", "contact_temperature", "cabinet_temperature"],
+      "statuses": ["warning", "critical"],
+      "metric_conditions": [
+        { "metric_id": "temperature", "min": 65, "score": 3 },
+        { "metric_id": "contact_temperature", "min": 70, "score": 4 },
+        { "metric_id": "load_current", "min": 300, "score": 1 }
+      ]
+    },
+    "evidence_points": [
+      "关注触头、母排接头、电缆压接端子等易发热点",
+      "结合红外测温结果与近期负荷转移、倒负荷记录复核",
+      "同步排查柜内散热、接点紧固和氧化腐蚀情况"
+    ],
+    "recommended_actions": [
+      "立即安排红外测温复核发热点位置，并记录温升趋势",
+      "检查母排、触头和电缆接点紧固状态，排查接触电阻增大隐患",
+      "结合负荷转供或削峰措施降低当前回路热应力"
+    ],
+    "source_authority": "地方政府公开信息",
+    "source_title": "文登区供电公司：红外测温+特巡 筑牢迎峰度冬安全防线",
+    "source_url": "https://www.weihai.gov.cn/art/2025/1/3/art_79726_5154529.html"
+  },
+  {
+    "knowledge_id": "distribution_heavy_overload",
+    "title": "配变重过载与末端低电压联动治理",
+    "scenario": "台区高负荷导致重过载与电压质量下降",
+    "summary": "当台区负荷持续偏高时，常伴随运行电流抬升、末端电压下降和设备热稳定风险，应结合转供、增容改造和负荷调配开展治理。",
+    "applicable_templates": ["distribution_transformer_simulated", "sgcc_simulated"],
+    "applicable_simulation_kinds": ["distribution_transformer", "sgcc"],
+    "match": {
+      "fault_labels": ["heavy_overload", "over_current", "compound"],
+      "issue_categories": ["current", "load_rate", "voltage"],
+      "risk_levels": ["medium", "high"],
+      "metric_conditions": [
+        { "metric_id": "current", "min": 105, "score": 3 },
+        { "metric_id": "load_rate", "min": 85, "score": 4 },
+        { "metric_id": "voltage", "max": 205, "score": 2 }
+      ]
+    },
+    "evidence_points": [
+      "关注高峰时段电流、负载率与末端电压联动变化",
+      "核查是否存在重载回路集中、季节性负荷突增或临时转供",
+      "结合保护动作记录、台区容量和线路压降评估风险"
+    ],
+    "recommended_actions": [
+      "优先核查峰值负荷与转供空间，必要时实施分流或倒负荷",
+      "评估配变增容、低压分支改造或缩短供电半径的必要性",
+      "持续跟踪重过载时段的电压质量，避免末端用户低电压投诉升级"
+    ],
+    "source_authority": "国家能源局",
+    "source_title": "国家能源局关于新形势下配电网高质量发展的指导意见",
+    "source_url": "https://www.nea.gov.cn/2024-03/01/c_1310766594.htm"
+  },
+  {
+    "knowledge_id": "distribution_low_voltage_unbalance",
+    "title": "台区低电压与三相不平衡治理",
+    "scenario": "末端低电压、相负荷分配不均",
+    "summary": "末端低电压往往与三相负荷分配不均、供电半径偏长和局部重载共同出现，应结合分相调负、负荷实测和台区治理闭环处理。",
+    "applicable_templates": ["distribution_transformer_simulated"],
+    "applicable_simulation_kinds": ["distribution_transformer"],
+    "match": {
+      "fault_labels": ["low_voltage_unbalance", "compound"],
+      "issue_categories": ["voltage", "imbalance_ratio"],
+      "statuses": ["warning", "critical"],
+      "metric_conditions": [
+        { "metric_id": "voltage", "max": 205, "score": 2 },
+        { "metric_id": "imbalance_ratio", "min": 18, "score": 4 }
+      ]
+    },
+    "evidence_points": [
+      "关注低电压测点是否集中在单相或末端线路",
+      "核对表箱、分支回路和台区相别负荷分布",
+      "结合负荷实测和台区工单闭环判断是否需要分相调负"
+    ],
+    "recommended_actions": [
+      "安排现场复测末端电压，并核对台区三相负荷分配情况",
+      "对偏载明显的用户或分支回路实施分相调负",
+      "如低电压长期存在，评估线路改造或新增布点监测的必要性"
+    ],
+    "source_authority": "国家能源局福建监管办公室",
+    "source_title": "国网福州供电公司：主动“问诊”解台区低电压“三相不平衡”难题",
+    "source_url": "https://fjb.nea.gov.cn/dtyw/hyxx/202311/t20231113_212591.html"
+  },
+  {
+    "knowledge_id": "frequent_outage_connectivity",
+    "title": "频繁停电与终端离线台账化治理",
+    "scenario": "设备离线、遥测中断或频繁掉线",
+    "summary": "终端持续离线或重复掉线时，应将现场电源、通信链路和配网自动化支撑能力纳入同一治理闭环，避免频繁停电与遥测中断反复发生。",
+    "applicable_templates": ["sgcc_simulated", "distribution_transformer_simulated", "switchgear_simulated", "personal_pc_real", "mobile_device_real", "temp_humidity_real"],
+    "match": {
+      "device_statuses": ["offline"],
+      "fault_labels": ["offline", "frequent_outage"],
+      "issue_categories": ["connectivity"],
+      "statuses": ["offline"]
+    },
+    "evidence_points": [
+      "核对终端供电、采集模块与通信链路是否同时异常",
+      "结合线路故障、频停台账和自动化动作记录定位反复掉线原因",
+      "将离线终端纳入闭环工单，避免只恢复通信而未消除源头问题"
+    ],
+    "recommended_actions": [
+      "优先检查终端供电、通信模块和现场网络环境",
+      "回看最近一次故障或停电记录，确认是否存在频繁停电或重复跳闸",
+      "对长期离线点位建立闭环治理台账，跟踪恢复质量"
+    ],
+    "source_authority": "国家能源局云南监管办公室",
+    "source_title": "云南能源监管办持续推进频繁停电治理 推动全省供电质量稳步提升",
+    "source_url": "https://ynb.nea.gov.cn/dtyw/gzdt/202511/t20251130_291452.html"
+  }
+]
